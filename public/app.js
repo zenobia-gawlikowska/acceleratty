@@ -124,8 +124,9 @@ function toast(msg, type = 'info', duration = 4000) {
   el.innerHTML = `
     <span class="toast-icon">${ICONS[type]}</span>
     <span class="toast-msg">${msg}</span>
-    <button class="toast-close" onclick="this.parentElement.remove()">✕</button>
+    <button class="toast-close">✕</button>
   `;
+  el.querySelector('.toast-close').addEventListener('click', () => el.remove());
   dom.toasts.prepend(el);
   if (duration > 0) {
     setTimeout(() => {
