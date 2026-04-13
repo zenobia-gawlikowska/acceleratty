@@ -315,12 +315,46 @@ app.post('/api/git/commit', async (req, res) => {
   }
 });
 
+// Detect which branch to use for push/pull:
+// 1. Use the current local branch if it already tracks a remote branch.
+// 2. Otherwise ask the remote what its HEAD is (works for GitHub repos).
+// 3. Fall back to trying 'main', then 'master'.
+async function resolveRemoteBranch() {
+  // Current local branch name
+  const branchSummary = await git.branchLocal().catch(() => ({ current: '' }));
+  const localBranch   = branchSummary.current || '';
+
+  // If the local branch already has a tracked upstream, use it as-is
+  if (localBranch) {
+    const tracking = await git.raw(['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'])
+                               .catch(() => '');
+    if (tracking.trim()) return localBranch; // upstream is configured — trust it
+  }
+
+  // Ask the remote what its default branch is
+  try {
+    const symref = await git.raw(['ls-remote', '--symref', 'origin', 'HEAD']);
+    // Output looks like:  ref: refs/heads/main\tHEAD
+    const match = symref.match(/ref: refs\/heads\/([^\s]+)\s+HEAD/);
+    if (match) return match[1];
+  } catch (_) {}
+
+  // Fall back: check which of main / master actually exists on the remote
+  for (const candidate of ['main', 'master']) {
+    const exists = await git.raw(['ls-remote', '--heads', 'origin', candidate])
+                             .catch(() => '');
+    if (exists.trim()) return candidate;
+  }
+
+  // Last resort: use local branch name or 'main'
+  return localBranch || 'main';
+}
+
 app.post('/api/git/push', async (req, res) => {
   try {
-    const branchSummary = await git.branchLocal().catch(() => ({ current: 'main' }));
-    const currentBranch = branchSummary.current || 'main';
+    const branch = await resolveRemoteBranch();
     // --set-upstream so the branch tracks origin after the first push
-    const result = await git.push(['--set-upstream', 'origin', currentBranch]);
+    const result = await git.push(['--set-upstream', 'origin', branch]);
     broadcast('git_pushed', {});
     res.json({ success: true, result });
   } catch (e) {
@@ -346,16 +380,13 @@ app.post('/api/git/pull', async (req, res) => {
   }
 
   try {
-    // Determine current branch; fall back to 'main'
-    const branchSummary  = await git.branchLocal().catch(() => ({ current: 'main' }));
-    const currentBranch  = branchSummary.current || 'main';
+    const branch = await resolveRemoteBranch();
 
-    // Ensure the local branch tracks origin/<branch> so plain `git pull` works
-    // next time and git doesn't complain about missing tracking information.
-    await git.raw(['branch', '--set-upstream-to', `origin/${currentBranch}`, currentBranch])
-             .catch(() => {}); // ignore if remote branch doesn't exist yet
+    // Set upstream tracking so future plain `git pull` works without arguments
+    await git.raw(['branch', '--set-upstream-to', `origin/${branch}`, branch])
+             .catch(() => {});
 
-    const result = await git.pull('origin', currentBranch, { '--no-rebase': null });
+    const result = await git.pull('origin', branch, { '--no-rebase': null });
     const conflicts = await checkConflicts();
     if (conflicts) return res.json({ success: false, hasConflicts: true, conflicts });
     broadcast('git_pulled', { summary: result.summary });
