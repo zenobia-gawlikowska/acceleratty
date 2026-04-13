@@ -25,10 +25,11 @@ function isValidHash(hash) {
 function stripCredentialsFromUrl(rawUrl) {
   try {
     const u = new URL(rawUrl);
-    const user = decodeURIComponent(u.username);
+    const user           = decodeURIComponent(u.username);
+    const hadCredentials = !!(u.username || u.password);
     u.username = '';
     u.password = '';
-    return { clean: u.toString(), hasCredentials: !!(u.username || rawUrl.includes('@')), user };
+    return { clean: u.toString(), hasCredentials: hadCredentials, user };
   } catch {
     return { clean: rawUrl, hasCredentials: false, user: '' };
   }
@@ -39,8 +40,31 @@ function stripCredentialsFromUrl(rawUrl) {
 function safeError(e) {
   const raw = e?.message || String(e);
   const scrubbed = scrubCredentials(raw);
-  // Replace absolute paths like /Users/foo/bar with a placeholder
   return scrubbed.replace(/\/[^\s:'"]+\/[^\s:'"]+/g, '<path>');
+}
+
+// Turn a git error into a plain-English message the user can act on.
+function friendlyGitError(e) {
+  const msg = e?.message || String(e);
+  if (/could not read (Username|Password)|Terminal prompt disabled|device not configured/i.test(msg)) {
+    return 'No credentials configured — open ⚙️ Settings and enter your GitHub username and token';
+  }
+  if (/Authentication failed|403|401|bad credentials/i.test(msg)) {
+    return 'Authentication failed — open ⚙️ Settings and check your GitHub username and token';
+  }
+  if (/not found|404|repository.*not exist/i.test(msg)) {
+    return 'Repository not found — open ⚙️ Settings and check the repository URL';
+  }
+  if (/ENOTFOUND|network|resolve host|getaddrinfo/i.test(msg)) {
+    return 'Network error — check your internet connection';
+  }
+  if (/rejected.*non-fast-forward|fetch first/i.test(msg)) {
+    return 'Your local copy is behind the remote — click ⬇ Get Updates first, then try again';
+  }
+  if (/nothing to push/i.test(msg)) {
+    return 'Nothing to push — save a snapshot first';
+  }
+  return safeError(e);
 }
 const WORKSPACE = process.env.WORKSPACE
   ? path.resolve(process.env.WORKSPACE)
@@ -50,6 +74,9 @@ const WORKSPACE = process.env.WORKSPACE
 if (!fs.existsSync(WORKSPACE)) {
   fs.mkdirSync(WORKSPACE, { recursive: true });
 }
+
+// Prevent git from hanging waiting for interactive credential input
+process.env.GIT_TERMINAL_PROMPT = '0';
 
 const git = simpleGit(WORKSPACE);
 
@@ -294,7 +321,7 @@ app.post('/api/git/push', async (req, res) => {
     broadcast('git_pushed', {});
     res.json({ success: true, result });
   } catch (e) {
-    res.status(500).json({ error: safeError(e) });
+    res.status(500).json({ error: friendlyGitError(e) });
   }
 });
 
@@ -326,7 +353,7 @@ app.post('/api/git/pull', async (req, res) => {
       const conflicts = await checkConflicts();
       if (conflicts) return res.json({ success: false, hasConflicts: true, conflicts });
     } catch (_) {}
-    res.status(500).json({ error: safeError(e) });
+    res.status(500).json({ error: friendlyGitError(e) });
   }
 });
 
@@ -347,7 +374,7 @@ app.post('/api/git/resolve-commit', async (req, res) => {
     await git.commit('Resolve merge conflicts');
     res.json({ success: true });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: safeError(e) });
   }
 });
 
@@ -429,10 +456,27 @@ app.post('/api/settings', async (req, res) => {
       const parsed = new URL(repoUrl.trim());
       if (!parsed.pathname.endsWith('.git')) parsed.pathname += '.git';
 
+      let effectiveUser  = ghUser?.trim()  || '';
+      let effectiveToken = token?.trim()   || '';
+
+      // If no new token was submitted, preserve the one already stored in the remote URL
+      if (!effectiveToken) {
+        const existingRemotes = await git.getRemotes(true).catch(() => []);
+        const existingOrigin  = existingRemotes.find(r => r.name === 'origin');
+        const existingRaw     = existingOrigin?.refs?.fetch || '';
+        try {
+          const existingUrl = new URL(existingRaw);
+          if (existingUrl.password) {
+            effectiveToken = decodeURIComponent(existingUrl.password);
+            if (!effectiveUser) effectiveUser = decodeURIComponent(existingUrl.username);
+          }
+        } catch (_) {}
+      }
+
       // Embed credentials for push/pull — only for https
-      if (ghUser && token) {
-        parsed.username = encodeURIComponent(ghUser.trim());
-        parsed.password = encodeURIComponent(token.trim());
+      if (effectiveUser && effectiveToken) {
+        parsed.username = encodeURIComponent(effectiveUser);
+        parsed.password = encodeURIComponent(effectiveToken);
       }
 
       const urlWithCreds = parsed.toString();
