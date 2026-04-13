@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Acceleratty</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <button id="btn-sidebar-toggle" class="btn btn-icon sidebar-toggle-btn" title="Toggle sidebar">☰</button>
+        <span class="logo">⚡ Acceleratty</span>
+      </div>
+      <div class="header-center">
+        <span id="current-file-label" class="current-file-label"></span>
+        <span id="unsaved-dot" class="unsaved-dot hidden" title="Unsaved changes">●</span>
+      </div>
+      <div class="header-right">
+        <button id="btn-save" class="btn btn-primary" disabled>💾 Save</button>
+        <div class="notif-wrapper">
+          <button id="btn-notif-toggle" class="btn btn-icon" title="Notifications">
+            🔔
+            <span id="notif-badge" class="badge hidden">0</span>
+          </button>
+        </div>
+        <button id="btn-settings" class="btn btn-icon" title="Profile &amp; Repository Settings">⚙️</button>
+      </div>
+    </header>
+
+    <!-- Notifications panel (dropdown) -->
+    <div id="notif-panel" class="notif-panel hidden">
+      <div class="notif-panel-header">
+        <strong>Notifications</strong>
+        <button id="btn-clear-notifs" class="btn-link">Clear all</button>
+      </div>
+      <div id="notif-list" class="notif-list">
+        <div class="notif-empty">No notifications yet</div>
+      </div>
+    </div>
+
+    <!-- Main layout -->
+    <div class="main">
+
+      <!-- Sidebar backdrop (mobile) -->
+      <div id="sidebar-backdrop" class="sidebar-backdrop hidden"></div>
+
+      <!-- Sidebar -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-top">
+          <span class="sidebar-title">Files</span>
+          <div class="sidebar-btns">
+            <button id="btn-new-file" class="btn btn-sm" title="New file">+ File</button>
+            <button id="btn-new-folder" class="btn btn-sm" title="New folder">+ Folder</button>
+          </div>
+        </div>
+
+        <!-- Inline folder create form (folders don't need a type) -->
+        <div id="create-folder-form" class="create-form hidden">
+          <input type="text" id="create-folder-input" class="create-input" placeholder="Folder name…" autocomplete="off" />
+          <div class="create-form-btns">
+            <button id="btn-create-folder-confirm" class="btn btn-primary btn-sm">Create</button>
+            <button id="btn-create-folder-cancel" class="btn btn-sm">Cancel</button>
+          </div>
+        </div>
+
+        <div id="file-tree" class="file-tree">
+          <div class="tree-loading">Loading…</div>
+        </div>
+
+        <div class="sidebar-footer">
+          <button id="btn-refresh" class="btn-link">↻ Refresh</button>
+        </div>
+      </aside>
+
+      <!-- Editor area -->
+      <div class="editor-area">
+        <div class="editor-toolbar">
+          <div class="toolbar-tabs hidden" id="toolbar-tabs">
+            <button id="tab-edit" class="tab active">Edit</button>
+            <button id="tab-split" class="tab">Split</button>
+            <button id="tab-preview" class="tab">Preview</button>
+          </div>
+          <div class="format-bar hidden" id="format-bar">
+            <button class="fmt-btn" data-fmt="bold" title="Bold">B</button>
+            <button class="fmt-btn" data-fmt="italic" title="Italic"><em>I</em></button>
+            <button class="fmt-btn" data-fmt="h1" title="Heading 1">H1</button>
+            <button class="fmt-btn" data-fmt="h2" title="Heading 2">H2</button>
+            <button class="fmt-btn" data-fmt="bullet" title="Bullet list">• List</button>
+            <button class="fmt-btn" data-fmt="code" title="Code block">{ }</button>
+            <button class="fmt-btn" data-fmt="link" title="Link">🔗</button>
+            <span class="fmt-sep"></span>
+            <button id="btn-copy-all" class="fmt-btn" title="Copy entire document">Copy All</button>
+          </div>
+          <div class="toolbar-right">
+            <button id="btn-delete-file" class="btn btn-sm btn-danger hidden">Delete</button>
+          </div>
+        </div>
+
+        <div id="editor-body" class="editor-body">
+          <!-- Welcome screen -->
+          <div id="welcome" class="welcome">
+            <div class="welcome-inner">
+              <div class="welcome-icon">⚡</div>
+              <h1>Acceleratty</h1>
+              <p>Select a file from the sidebar, or create a new one to get started.</p>
+              <button class="btn btn-primary btn-lg" onclick="document.getElementById('btn-new-file').click()">
+                + Create New File
+              </button>
+            </div>
+          </div>
+
+          <!-- Editor pane -->
+          <div id="pane-edit" class="pane hidden">
+            <textarea id="editor" class="editor-textarea" placeholder="Start writing in Markdown…"></textarea>
+          </div>
+
+          <!-- Preview pane -->
+          <div id="pane-preview" class="pane preview-pane hidden">
+            <div id="preview-content" class="preview-content markdown-body"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sync bar (bottom) -->
+    <div class="sync-bar">
+      <div class="sync-left">
+        <span id="sync-dot" class="sync-dot ok"></span>
+        <span id="sync-text" class="sync-text">No changes</span>
+      </div>
+      <div class="sync-center">
+        <input type="text" id="commit-msg" class="commit-input" placeholder="Describe what changed (optional)…" />
+      </div>
+      <div class="sync-right">
+        <button id="btn-pull" class="btn btn-sync">⬇ Get Updates</button>
+        <button id="btn-commit" class="btn btn-sync btn-primary">📸 Save Snapshot</button>
+        <button id="btn-push" class="btn btn-sync">⬆ Share Changes</button>
+      </div>
+    </div>
+
+    <!-- New file type picker modal -->
+    <div id="new-file-overlay" class="modal-overlay hidden">
+      <div class="modal new-file-modal">
+        <div class="modal-header">
+          <h2>Create New File</h2>
+          <p>Choose a document type to start with the right structure.</p>
+        </div>
+        <div class="file-type-grid">
+          <button class="file-type-card" data-type="blank">
+            <span class="ftc-icon">📄</span>
+            <span class="ftc-label">Blank</span>
+            <span class="ftc-desc">Empty markdown file</span>
+          </button>
+          <button class="file-type-card" data-type="prd">
+            <span class="ftc-icon">📋</span>
+            <span class="ftc-label">PRD</span>
+            <span class="ftc-desc">Product Requirements Document</span>
+          </button>
+          <button class="file-type-card" data-type="userstory">
+            <span class="ftc-icon">📖</span>
+            <span class="ftc-label">User Stories</span>
+            <span class="ftc-desc">As a… I want… So that…</span>
+          </button>
+          <button class="file-type-card" data-type="qa">
+            <span class="ftc-icon">🧪</span>
+            <span class="ftc-label">QA Test Cases</span>
+            <span class="ftc-desc">Test steps, expected results</span>
+          </button>
+          <button class="file-type-card" data-type="html">
+            <span class="ftc-icon">🌐</span>
+            <span class="ftc-label">HTML + CSS</span>
+            <span class="ftc-desc">Web component spec &amp; code</span>
+          </button>
+          <button class="file-type-card" data-type="angular">
+            <span class="ftc-icon">🅰️</span>
+            <span class="ftc-label">Angular Component</span>
+            <span class="ftc-desc">Component, template &amp; styles</span>
+          </button>
+        </div>
+        <div class="new-file-name-row">
+          <label class="new-file-name-label" for="new-file-name">File name</label>
+          <div class="new-file-name-input-wrap">
+            <input type="text" id="new-file-name" class="new-file-name-input" placeholder="my-document" autocomplete="off" />
+            <span class="new-file-ext">.md</span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="btn-new-file-cancel" class="btn">Cancel</button>
+          <button id="btn-new-file-create" class="btn btn-primary btn-lg">Create File</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Conflict resolution modal -->
+    <div id="conflict-overlay" class="modal-overlay hidden">
+      <div class="modal conflict-modal">
+        <div class="modal-header">
+          <h2>⚠️ Conflicting Changes</h2>
+          <p>Someone else edited the same file you did. Choose which version to keep, or combine them manually.</p>
+        </div>
+        <div class="conflict-file-nav" id="conflict-file-nav"></div>
+        <div class="conflict-body">
+          <div class="conflict-cols">
+            <div class="conflict-col">
+              <div class="conflict-col-label mine">Your version</div>
+              <pre id="col-ours" class="conflict-pre"></pre>
+              <button id="btn-keep-mine" class="btn btn-primary btn-full">✓ Keep My Version</button>
+            </div>
+            <div class="conflict-divider"></div>
+            <div class="conflict-col">
+              <div class="conflict-col-label theirs">Their version</div>
+              <pre id="col-theirs" class="conflict-pre"></pre>
+              <button id="btn-keep-theirs" class="btn btn-full">✓ Keep Their Version</button>
+            </div>
+          </div>
+          <details class="manual-section">
+            <summary>✏️ Edit manually instead</summary>
+            <textarea id="manual-edit" class="manual-textarea"></textarea>
+            <button id="btn-save-manual" class="btn btn-primary">Save Manual Edit</button>
+          </details>
+        </div>
+        <div class="modal-footer">
+          <span id="conflict-remaining" class="conflict-remaining"></span>
+          <button id="btn-finish-resolve" class="btn btn-primary btn-lg" disabled>
+            Finish &amp; Save Resolutions
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings modal -->
+    <div id="settings-overlay" class="modal-overlay hidden">
+      <div class="modal settings-modal">
+
+        <div class="modal-header settings-modal-header">
+          <div>
+            <h2>⚙️ Profile &amp; Repository</h2>
+            <p>Configure your identity and connect a GitHub repository for syncing.</p>
+          </div>
+          <button id="btn-settings-close" class="btn btn-icon settings-close-btn">✕</button>
+        </div>
+
+        <div class="settings-body">
+
+          <!-- Identity -->
+          <div class="settings-section">
+            <div class="settings-section-title">
+              <span class="settings-section-icon">👤</span> Your Identity
+            </div>
+            <div class="settings-section-desc">Used in commit history so your team knows who made each change.</div>
+            <div class="settings-fields">
+              <div class="settings-field">
+                <label for="s-name">Display Name</label>
+                <input type="text" id="s-name" class="settings-input" placeholder="e.g. Jane Smith" autocomplete="name" />
+              </div>
+              <div class="settings-field">
+                <label for="s-email">Email Address</label>
+                <input type="email" id="s-email" class="settings-input" placeholder="e.g. jane@company.com" autocomplete="email" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Repository -->
+          <div class="settings-section">
+            <div class="settings-section-title">
+              <span class="settings-section-icon">📦</span> Repository
+            </div>
+            <div class="settings-section-desc">The GitHub repository where your content will be stored and shared.</div>
+            <div class="settings-fields">
+              <div class="settings-field settings-field-full">
+                <label for="s-repo-url">Repository URL</label>
+                <input type="url" id="s-repo-url" class="settings-input" placeholder="https://github.com/your-org/your-repo" autocomplete="off" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Authentication -->
+          <div class="settings-section">
+            <div class="settings-section-title">
+              <span class="settings-section-icon">🔑</span> Authentication
+            </div>
+            <div class="settings-section-desc">
+              Needed to push and pull changes. Use a GitHub
+              <a href="https://github.com/settings/tokens/new?scopes=repo&description=Acceleratty" target="_blank" class="settings-link">Personal Access Token</a>
+              (select the <code>repo</code> scope).
+            </div>
+            <div class="settings-fields">
+              <div class="settings-field">
+                <label for="s-gh-user">GitHub Username</label>
+                <input type="text" id="s-gh-user" class="settings-input" placeholder="e.g. janesmith" autocomplete="username" />
+              </div>
+              <div class="settings-field">
+                <label for="s-token">Personal Access Token</label>
+                <div class="settings-token-wrap">
+                  <input type="password" id="s-token" class="settings-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" />
+                  <button id="btn-token-toggle" class="btn-token-toggle" title="Show / hide token">👁</button>
+                </div>
+                <span id="s-token-saved" class="settings-token-saved hidden">🔒 Token saved — enter a new one to replace it</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Connection status -->
+          <div class="settings-section settings-section-status">
+            <div id="s-conn-status" class="conn-status conn-status-unknown">
+              <span class="conn-dot"></span>
+              <span class="conn-label">Not tested</span>
+            </div>
+            <button id="btn-test-conn" class="btn btn-sm">Test Connection</button>
+          </div>
+
+        </div>
+
+        <div class="modal-footer">
+          <button id="btn-settings-cancel" class="btn">Cancel</button>
+          <button id="btn-settings-save" class="btn btn-primary btn-lg">Save Settings</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Toast container -->
+    <div id="toasts" class="toast-container"></div>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
