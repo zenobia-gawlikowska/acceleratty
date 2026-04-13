@@ -664,6 +664,21 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
   to { opacity: 0; transform: translateX(110%); }
 }
 
+.welcome-setup-msg {
+  color: var(--text-muted);
+  margin-bottom: 20px;
+  line-height: 1.6;
+  max-width: 340px;
+}
+.welcome-or {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin: 12px 0;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+#welcome-ready p { color: var(--text-muted); margin-bottom: 24px; line-height: 1.6; }
+
 /* ── Settings modal ──────────────────────────────────────────────────────────── */
 .settings-modal {
   max-width: 580px;

@@ -106,10 +106,26 @@
             <div class="welcome-inner">
               <div class="welcome-icon">⚡</div>
               <h1>Acceleratty</h1>
-              <p>Select a file from the sidebar, or create a new one to get started.</p>
-              <button class="btn btn-primary btn-lg" onclick="document.getElementById('btn-new-file').click()">
-                + Create New File
-              </button>
+
+              <!-- Shown when no content repo is connected yet -->
+              <div id="welcome-setup" class="hidden">
+                <p class="welcome-setup-msg">Before you start, connect a GitHub repository where your documents will be saved and shared with your team.</p>
+                <button class="btn btn-primary btn-lg" onclick="openSettings()">
+                  ⚙️ Connect Your Repository
+                </button>
+                <div class="welcome-or">or</div>
+                <button class="btn btn-lg" onclick="document.getElementById('btn-new-file').click()">
+                  + Create a File Locally First
+                </button>
+              </div>
+
+              <!-- Shown when repo is already connected -->
+              <div id="welcome-ready">
+                <p>Select a file from the sidebar, or create a new one to get started.</p>
+                <button class="btn btn-primary btn-lg" onclick="document.getElementById('btn-new-file').click()">
+                  + Create New File
+                </button>
+              </div>
             </div>
           </div>
 
@@ -238,8 +254,8 @@
 
         <div class="modal-header settings-modal-header">
           <div>
-            <h2>⚙️ Profile &amp; Repository</h2>
-            <p>Configure your identity and connect a GitHub repository for syncing.</p>
+            <h2>⚙️ Profile &amp; Content Repository</h2>
+            <p>Configure your identity and connect the GitHub repository where <strong>your documents</strong> will be stored. This is separate from the Acceleratty app itself.</p>
           </div>
           <button id="btn-settings-close" class="btn btn-icon settings-close-btn">✕</button>
         </div>

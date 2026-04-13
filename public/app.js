@@ -1419,6 +1419,23 @@ async function init() {
   addTemplateButton();
   setEditorVisible(false); // nothing open yet — show welcome screen only
   state.mode = 'edit';     // default mode for when a file is opened
+  await checkRepoSetup();
 }
+
+// Show the right welcome state depending on whether a content repo is configured
+async function checkRepoSetup() {
+  const { hasRemote } = await GET('/api/settings/status').catch(() => ({ hasRemote: false }));
+  $('welcome-setup').classList.toggle('hidden',  hasRemote);
+  $('welcome-ready').classList.toggle('hidden', !hasRemote);
+}
+
+// Re-check after settings are saved so welcome screen updates immediately
+const _origSaveSettings = saveSettingsToServer;
+// Patch: call checkRepoSetup after a successful save
+dom.btnSettingsSave.addEventListener('click', () => {
+  // checkRepoSetup is called via the existing save handler's closeSettings chain;
+  // attach it here to run after any successful save
+  setTimeout(checkRepoSetup, 300);
+});
 
 init();

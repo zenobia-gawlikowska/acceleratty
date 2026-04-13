@@ -368,6 +368,19 @@ app.get('/api/git/commit-files', async (req, res) => {
 });
 
 // ── Settings (identity + remote) ──────────────────────────────────────────────
+
+// Quick check: does the content repo have a remote configured?
+app.get('/api/settings/status', async (req, res) => {
+  try {
+    const remotes = await git.getRemotes(true).catch(() => []);
+    const origin  = remotes.find(r => r.name === 'origin');
+    const hasRemote = !!(origin?.refs?.fetch);
+    res.json({ hasRemote });
+  } catch (e) {
+    res.json({ hasRemote: false });
+  }
+});
+
 app.get('/api/settings', async (req, res) => {
   try {
     const name    = (await git.raw(['config', '--local', 'user.name' ]).catch(() => '')).trim();
