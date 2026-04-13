@@ -317,7 +317,10 @@ app.post('/api/git/commit', async (req, res) => {
 
 app.post('/api/git/push', async (req, res) => {
   try {
-    const result = await git.push();
+    const branchSummary = await git.branchLocal().catch(() => ({ current: 'main' }));
+    const currentBranch = branchSummary.current || 'main';
+    // --set-upstream so the branch tracks origin after the first push
+    const result = await git.push(['--set-upstream', 'origin', currentBranch]);
     broadcast('git_pushed', {});
     res.json({ success: true, result });
   } catch (e) {
@@ -343,7 +346,16 @@ app.post('/api/git/pull', async (req, res) => {
   }
 
   try {
-    const result = await git.pull();
+    // Determine current branch; fall back to 'main'
+    const branchSummary  = await git.branchLocal().catch(() => ({ current: 'main' }));
+    const currentBranch  = branchSummary.current || 'main';
+
+    // Ensure the local branch tracks origin/<branch> so plain `git pull` works
+    // next time and git doesn't complain about missing tracking information.
+    await git.raw(['branch', '--set-upstream-to', `origin/${currentBranch}`, currentBranch])
+             .catch(() => {}); // ignore if remote branch doesn't exist yet
+
+    const result = await git.pull('origin', currentBranch, { '--no-rebase': null });
     const conflicts = await checkConflicts();
     if (conflicts) return res.json({ success: false, hasConflicts: true, conflicts });
     broadcast('git_pulled', { summary: result.summary });
