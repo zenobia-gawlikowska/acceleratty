@@ -413,10 +413,9 @@ async function openFile(filePath) {
   document.title = `${name} — Acceleratty`;
 
   setUnsaved(false);
-  if (state.mode === 'preview' || state.mode === 'split') renderPreview();
+  setMode('preview');
   highlightActiveFile(filePath);
   if (isMobile()) closeSidebar();
-  dom.editor.focus();
 }
 
 function highlightActiveFile(filePath) {
