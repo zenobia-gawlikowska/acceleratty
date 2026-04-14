@@ -474,10 +474,20 @@ function pushUndo(content) {
   syncUndoButtons();
 }
 
-function applyUndo(stack, targetStack) {
-  if (stack.length < 2) return;               // need current + at least one previous
-  targetStack.push(stack.pop());              // park current state in the other stack
-  dom.editor.value = stack[stack.length - 1]; // restore previous state
+function undo() {
+  if (undoStack.length < 2) return;
+  redoStack.push(undoStack.pop());            // park current state in redo
+  dom.editor.value = undoStack[undoStack.length - 1];
+  setUnsaved(dom.editor.value !== state.originalContent);
+  if (state.mode === 'split') renderPreview();
+  syncUndoButtons();
+}
+
+function redo() {
+  if (!redoStack.length) return;
+  const next = redoStack.pop();
+  undoStack.push(next);
+  dom.editor.value = next;
   setUnsaved(dom.editor.value !== state.originalContent);
   if (state.mode === 'split') renderPreview();
   syncUndoButtons();
@@ -495,8 +505,8 @@ function resetUndoHistory(initialContent) {
   syncUndoButtons();
 }
 
-$('fmt-undo').addEventListener('click', () => applyUndo(undoStack, redoStack));
-$('fmt-redo').addEventListener('click', () => applyUndo(redoStack, undoStack));
+$('fmt-undo').addEventListener('click', undo);
+$('fmt-redo').addEventListener('click', redo);
 
 dom.editor.addEventListener('input', () => {
   setUnsaved(dom.editor.value !== state.originalContent);
@@ -511,10 +521,10 @@ dom.editor.addEventListener('keydown', e => {
   const mod = e.metaKey || e.ctrlKey;
   if (mod && e.key === 'z' && !e.shiftKey) {
     e.preventDefault();
-    applyUndo(undoStack, redoStack);
+    undo();
   } else if (mod && ((e.key === 'z' && e.shiftKey) || e.key === 'y')) {
     e.preventDefault();
-    applyUndo(redoStack, undoStack);
+    redo();
   }
 });
 
