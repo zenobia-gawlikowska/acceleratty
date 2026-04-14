@@ -486,8 +486,9 @@ function setEditorVisible(visible) {
   if (!visible) {
     dom.paneEdit.classList.add('hidden');
     dom.panePreview.classList.add('hidden');
-    dom.paneEdit.classList.remove('split');
-    dom.panePreview.classList.remove('split');
+    $('split-divider').classList.add('hidden');
+    dom.paneEdit.style.width = '';
+    dom.panePreview.style.width = '';
   }
 }
 
@@ -497,24 +498,32 @@ function setMode(mode) {
   dom.tabSplit.classList.toggle('active', mode === 'split');
   dom.tabPreview.classList.toggle('active', mode === 'preview');
 
-  // Always reset pane state cleanly
+  // Reset panes
   dom.paneEdit.classList.add('hidden');
-  dom.paneEdit.classList.remove('split');
   dom.panePreview.classList.add('hidden');
-  dom.panePreview.classList.remove('split');
+  $('split-divider').classList.add('hidden');
+  dom.paneEdit.style.width = '';
+  dom.panePreview.style.width = '';
+  dom.paneEdit.style.flex = '';
+  dom.panePreview.style.flex = '';
 
-  if (!state.currentFile) return; // no file — nothing to show
+  if (!state.currentFile) return;
 
   if (mode === 'edit') {
     dom.paneEdit.classList.remove('hidden');
   } else if (mode === 'preview') {
     dom.panePreview.classList.remove('hidden');
     renderPreview();
-  } else { // split
-    dom.paneEdit.classList.add('split');
-    dom.panePreview.classList.add('split');
+  } else { // split — equal 50/50 unless user has dragged
+    const divider = $('split-divider');
     dom.paneEdit.classList.remove('hidden');
     dom.panePreview.classList.remove('hidden');
+    divider.classList.remove('hidden');
+    // Reset to 50/50 each time split mode is entered
+    dom.paneEdit.style.flex = 'none';
+    dom.paneEdit.style.width = '50%';
+    dom.panePreview.style.flex = 'none';
+    dom.panePreview.style.width = 'calc(50% - 5px)';
     renderPreview();
   }
 }
@@ -522,6 +531,39 @@ function setMode(mode) {
 dom.tabEdit.addEventListener('click', () => setMode('edit'));
 dom.tabSplit.addEventListener('click', () => setMode('split'));
 dom.tabPreview.addEventListener('click', () => setMode('preview'));
+
+/* ── Split pane drag-to-resize ───────────────────────────────────────────────── */
+(function initSplitDrag() {
+  const divider = $('split-divider');
+  let dragging = false, startX = 0, startEditW = 0, containerW = 0;
+
+  divider.addEventListener('mousedown', e => {
+    dragging    = true;
+    startX      = e.clientX;
+    startEditW  = dom.paneEdit.getBoundingClientRect().width;
+    containerW  = dom.paneEdit.parentElement.getBoundingClientRect().width - 5; // subtract divider
+    divider.classList.add('dragging');
+    document.body.style.cursor     = 'col-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    let newW = startEditW + (e.clientX - startX);
+    newW = Math.max(containerW * 0.15, Math.min(containerW * 0.85, newW)); // clamp 15%–85%
+    dom.paneEdit.style.width    = newW + 'px';
+    dom.panePreview.style.width = (containerW - newW) + 'px';
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    divider.classList.remove('dragging');
+    document.body.style.cursor     = '';
+    document.body.style.userSelect = '';
+  });
+})();
 
 /* ── Markdown preview ────────────────────────────────────────────────────────── */
 function renderPreview() {

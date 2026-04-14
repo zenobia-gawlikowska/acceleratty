@@ -350,13 +350,30 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
   padding: 24px 32px 48px;
 }
 
-/* Split mode */
-.pane.split {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+/* Split mode — widths set via inline style by JS; divider handle between panes */
+.split-divider {
+  width: 5px;
+  flex-shrink: 0;
+  background: var(--border);
+  cursor: col-resize;
+  position: relative;
+  transition: background .15s;
+  z-index: 10;
 }
-.pane.split .editor-textarea { border-right: 1px solid var(--border); }
-.pane.split .preview-pane { overflow-y: auto; }
+.split-divider:hover,
+.split-divider.dragging { background: var(--accent); }
+/* Three-dot grip indicator */
+.split-divider::after {
+  content: '⋮';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: rgba(255,255,255,.35);
+  font-size: 14px;
+  pointer-events: none;
+  line-height: 1;
+}
 
 /* ── Markdown body styles ────────────────────────────────────────────────────── */
 .markdown-body { font-size: 15px; line-height: 1.75; color: var(--text); }
