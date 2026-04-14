@@ -48,7 +48,6 @@ const dom = {
   commitMsg:        $('commit-msg'),
   btnPull:          $('btn-pull'),
   btnCommit:        $('btn-commit'),
-  btnPush:          $('btn-push'),
   notifToggle:      $('btn-notif-toggle'),
   notifBadge:       $('notif-badge'),
   notifPanel:       $('notif-panel'),
@@ -703,38 +702,43 @@ function setSyncStatus(type, text) {
 function setBusy(text) {
   dom.syncDot.className = 'sync-dot busy';
   dom.syncText.textContent = text;
-  [dom.btnPull, dom.btnCommit, dom.btnPush].forEach(b => b.disabled = true);
+  [dom.btnPull, dom.btnCommit].forEach(b => b.disabled = true);
 }
 function clearBusy() {
-  [dom.btnPull, dom.btnCommit, dom.btnPush].forEach(b => b.disabled = false);
+  [dom.btnPull, dom.btnCommit].forEach(b => b.disabled = false);
   updateGitStatus();
 }
 
 dom.btnCommit.addEventListener('click', async () => {
-  setBusy('Saving snapshot…');
   const message = dom.commitMsg.value.trim() || 'Update content';
-  const res = await POST('/api/git/commit', { message });
-  clearBusy();
-  if (res.nothing) {
-    toast('Nothing new to save', 'info');
-  } else if (res.success) {
-    dom.commitMsg.value = '';
-    toast('Snapshot saved!', 'success');
-    addNotification('📸', 'Snapshot saved', message);
-  } else {
-    toast(res.error || 'Commit failed', 'error');
-  }
-});
 
-dom.btnPush.addEventListener('click', async () => {
-  setBusy('Sharing changes…');
-  const res = await POST('/api/git/push', {});
+  // Step 1: commit
+  setBusy('Saving snapshot…');
+  const commitRes = await POST('/api/git/commit', { message });
+  if (!commitRes.success && !commitRes.nothing) {
+    clearBusy();
+    toast(commitRes.error || 'Save failed', 'error');
+    return;
+  }
+  if (commitRes.nothing) {
+    clearBusy();
+    toast('Nothing new to save', 'info');
+    return;
+  }
+  dom.commitMsg.value = '';
+
+  // Step 2: push
+  setBusy('Sharing with GitHub…');
+  const pushRes = await POST('/api/git/push', {});
   clearBusy();
-  if (res.success) {
-    toast('Changes shared successfully!', 'success');
-    addNotification('⬆️', 'Changes shared', 'Your updates are now available to the team');
+
+  if (pushRes.success) {
+    toast('Saved and shared!', 'success');
+    addNotification('📸', 'Saved & shared', message);
   } else {
-    toast(res.error || 'Share failed. Check your connection and remote URL.', 'error', 0);
+    // Commit succeeded but push failed — let user know their work is saved locally
+    toast(`Snapshot saved locally, but sharing failed: ${pushRes.error || 'unknown error'}`, 'warning', 0);
+    addNotification('⚠️', 'Saved locally only', pushRes.error || 'Push failed');
   }
 });
 
