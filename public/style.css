@@ -783,6 +783,22 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
 .settings-input::placeholder { color: #c0c4ce; }
 .settings-input.error { border-color: var(--danger); }
 
+.settings-select {
+  appearance: auto;
+  cursor: pointer;
+}
+.settings-branch-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.settings-branch-wrap .settings-input { flex: 1; }
+.settings-branch-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
 .settings-token-wrap {
   display: flex;
   align-items: center;

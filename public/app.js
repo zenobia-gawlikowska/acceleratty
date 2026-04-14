@@ -1372,10 +1372,64 @@ async function openSettings() {
     dom.sToken.placeholder = s.hasCredentials
       ? 'Enter a new token to replace the saved one'
       : 'ghp_xxxxxxxxxxxxxxxxxxxx';
+  } catch (_) {}
+
+  // Load branch list async — non-blocking
+  loadBranchSelector();
+}
+
+async function loadBranchSelector() {
+  const sel     = $('s-branch');
+  const hint    = $('s-branch-loading');
+  sel.innerHTML = '';
+  hint.classList.remove('hidden');
+
+  try {
+    const { current, branches } = await GET('/api/settings/branches');
+    hint.classList.add('hidden');
+
+    if (!branches.length) {
+      sel.innerHTML = `<option value="${current}">${current}</option>`;
+      return;
+    }
+    // Ensure current branch is always in the list
+    const all = branches.includes(current) ? branches : [current, ...branches];
+    all.forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b;
+      opt.textContent = b;
+      if (b === current) opt.selected = true;
+      sel.appendChild(opt);
+    });
   } catch (_) {
-    // API not yet available — modal still opens with empty fields
+    hint.textContent = 'Could not load branches';
+    hint.classList.remove('hidden');
   }
 }
+
+$('s-branch').addEventListener('change', async function () {
+  const branch = this.value;
+  if (!branch) return;
+  this.disabled = true;
+  $('s-branch-loading').textContent = `Switching to ${branch}…`;
+  $('s-branch-loading').classList.remove('hidden');
+  try {
+    const res = await POST('/api/git/checkout', { branch });
+    if (res.success) {
+      toast(`Switched to branch "${branch}"`, 'success');
+      await loadFiles(); // refresh file tree for new branch
+    } else {
+      toast(res.error || 'Branch switch failed', 'error');
+      await loadBranchSelector(); // revert selector
+    }
+  } catch (_) {
+    toast('Branch switch failed', 'error');
+    await loadBranchSelector();
+  } finally {
+    this.disabled = false;
+    $('s-branch-loading').classList.add('hidden');
+  }
+});
 
 function closeSettings() {
   dom.settingsOverlay.classList.add('hidden');

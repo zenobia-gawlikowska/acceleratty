@@ -556,6 +556,47 @@ app.post('/api/settings', async (req, res) => {
   }
 });
 
+// Return current branch + all local and remote branches
+app.get('/api/settings/branches', async (req, res) => {
+  try {
+    const summary = await git.branchLocal().catch(() => ({ current: 'main', all: [] }));
+    const current = summary.current || 'main';
+
+    // Collect remote branch names (strip "remotes/origin/" prefix)
+    const allRaw = await git.raw(['branch', '-a']).catch(() => '');
+    const remote = allRaw.split('\n')
+      .map(l => l.trim().replace(/^\*\s*/, ''))
+      .filter(l => l.startsWith('remotes/origin/') && !l.includes('HEAD'))
+      .map(l => l.replace('remotes/origin/', ''));
+
+    // Merge local + remote, deduplicate
+    const branches = [...new Set([...summary.all, ...remote])].sort();
+    res.json({ current, branches });
+  } catch (e) {
+    res.status(500).json({ error: safeError(e) });
+  }
+});
+
+// Switch to a different branch (checkout; create if it doesn't exist locally)
+app.post('/api/git/checkout', async (req, res) => {
+  try {
+    const { branch } = req.body;
+    if (!branch || typeof branch !== 'string' || !/^[\w.\-/]+$/.test(branch)) {
+      return res.status(400).json({ error: 'Invalid branch name' });
+    }
+    // Try checkout; if branch doesn't exist locally, create it tracking origin
+    try {
+      await git.checkout(branch);
+    } catch (_) {
+      await git.checkoutBranch(branch, `origin/${branch}`);
+    }
+    broadcast('branch_changed', { branch });
+    res.json({ success: true, branch });
+  } catch (e) {
+    res.status(500).json({ error: safeError(e) });
+  }
+});
+
 app.post('/api/git/test-connection', async (req, res) => {
   try {
     await git.raw(['ls-remote', '--heads', 'origin']);
