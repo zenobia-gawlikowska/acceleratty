@@ -839,10 +839,13 @@ function showConflictModal(conflicts) {
 function renderConflictNav() {
   dom.conflictFileNav.innerHTML = state.conflicts.map((c, i) => `
     <button class="conflict-file-btn ${i === state.currentConflictIdx ? 'active' : ''} ${state.resolvedConflicts[c.file] !== undefined ? 'resolved' : ''}"
-            onclick="switchConflict(${i})">
+            data-conflict-idx="${i}">
       ${c.file.split('/').pop()}
     </button>
   `).join('');
+  dom.conflictFileNav.querySelectorAll('.conflict-file-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchConflict(Number(btn.dataset.conflictIdx)));
+  });
 }
 
 window.switchConflict = function(idx) {
@@ -996,11 +999,17 @@ async function toggleTimeline() {
       <div class="timeline-header">
         <strong>📅 Decision Timeline</strong>
         <span class="timeline-sub">Commit history — track how content evolved</span>
-        <button class="btn-link" onclick="toggleTimeline()" style="margin-left:auto">✕ Close</button>
+        <button class="btn-link" id="btn-timeline-close" style="margin-left:auto">✕ Close</button>
       </div>
       <div id="timeline-list" class="timeline-list"><div class="timeline-loading">Loading history…</div></div>
     `;
     document.getElementById('app').appendChild(panel);
+    panel.querySelector('#btn-timeline-close').addEventListener('click', toggleTimeline);
+    // Event delegation for expand buttons (re-rendered each time)
+    panel.querySelector('#timeline-list').addEventListener('click', e => {
+      const btn = e.target.closest('.timeline-expand-btn');
+      if (btn) loadCommitFiles(btn.dataset.hash);
+    });
   }
 
   const log = await GET('/api/git/log');
@@ -1029,7 +1038,7 @@ function renderTimeline(commits, container) {
             <span class="timeline-hash">${c.hash.substring(0, 7)}</span>
           </div>
           <div class="timeline-files" id="files-${c.hash}" style="display:none"></div>
-          <button class="timeline-expand-btn btn-link" onclick="loadCommitFiles('${c.hash}')">
+          <button class="timeline-expand-btn btn-link" data-hash="${c.hash}">
             Show changed files ▸
           </button>
         </div>
@@ -1453,6 +1462,11 @@ async function saveSettingsToServer(silent = false) {
 
 /* ── Init ────────────────────────────────────────────────────────────────────── */
 async function init() {
+  // Welcome screen buttons (no inline onclick — CSP blocks those)
+  $('btn-welcome-connect').addEventListener('click', openSettings);
+  $('btn-welcome-local').addEventListener('click', () => dom.btnNewFile.click());
+  $('btn-welcome-new').addEventListener('click', () => dom.btnNewFile.click());
+
   await loadFiles();
   updateGitStatus();
   setInterval(updateGitStatus, 30000);

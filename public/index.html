@@ -110,11 +110,11 @@
               <!-- Shown when no content repo is connected yet -->
               <div id="welcome-setup" class="hidden">
                 <p class="welcome-setup-msg">Before you start, connect a GitHub repository where your documents will be saved and shared with your team.</p>
-                <button class="btn btn-primary btn-lg" onclick="openSettings()">
+                <button class="btn btn-primary btn-lg" id="btn-welcome-connect">
                   ⚙️ Connect Your Repository
                 </button>
                 <div class="welcome-or">or</div>
-                <button class="btn btn-lg" onclick="document.getElementById('btn-new-file').click()">
+                <button class="btn btn-lg" id="btn-welcome-local">
                   + Create a File Locally First
                 </button>
               </div>
@@ -122,7 +122,7 @@
               <!-- Shown when repo is already connected -->
               <div id="welcome-ready">
                 <p>Select a file from the sidebar, or create a new one to get started.</p>
-                <button class="btn btn-primary btn-lg" onclick="document.getElementById('btn-new-file').click()">
+                <button class="btn btn-primary btn-lg" id="btn-welcome-new">
                   + Create New File
                 </button>
               </div>
