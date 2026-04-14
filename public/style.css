@@ -864,7 +864,8 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
 
 /* ── Move file modal ─────────────────────────────────────────────────────────── */
 .move-file-modal { max-width: 380px; width: 100%; }
-.move-file-name  { font-weight: 600; margin-bottom: 12px; }
+.modal-body { padding: 20px 24px; }
+.move-file-name  { font-weight: 600; margin-bottom: 16px; }
 
 /* ── New file type picker modal ──────────────────────────────────────────────── */
 .new-file-modal {
