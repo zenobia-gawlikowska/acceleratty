@@ -395,11 +395,42 @@ dom.fileTree.addEventListener('keydown', e => {
   }
 });
 
+/* ── Focus trap utility ──────────────────────────────────────────────────────── */
+// Traps Tab/Shift+Tab inside `el`. Returns a cleanup function.
+function createFocusTrap(el, onEscape) {
+  const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+
+  function getFocusable() {
+    return [...el.querySelectorAll(FOCUSABLE)].filter(
+      n => !n.closest('[hidden]') && !n.closest('.hidden')
+    );
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Escape') { e.preventDefault(); onEscape?.(); return; }
+    if (e.key !== 'Tab') return;
+    const nodes = getFocusable();
+    if (!nodes.length) { e.preventDefault(); return; }
+    const first = nodes[0], last = nodes[nodes.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+    } else {
+      if (document.activeElement === last)  { e.preventDefault(); first.focus(); }
+    }
+  }
+
+  el.addEventListener('keydown', handleKey);
+  return () => el.removeEventListener('keydown', handleKey);
+}
+
 /* ── Move file modal ─────────────────────────────────────────────────────────── */
-let moveFilePath = '';
+let moveFilePath    = '';
+let movePreviousFocus = null;
+let moveReleaseTrap   = null;
 
 function showMoveModal(filePath, fileName) {
-  moveFilePath = filePath;
+  moveFilePath      = filePath;
+  movePreviousFocus = document.activeElement; // remember where to return focus
 
   // Label
   $('move-file-label').textContent = fileName.replace(/\.md$/, '');
@@ -421,12 +452,22 @@ function showMoveModal(filePath, fileName) {
       sel.appendChild(opt);
     });
 
-  $('move-file-overlay').classList.remove('hidden');
+  const overlay = $('move-file-overlay');
+  overlay.classList.remove('hidden');
+
+  // Set up focus trap and move focus into the modal
+  moveReleaseTrap = createFocusTrap(overlay, closeMoveModal);
+  sel.focus();
 }
 
 function closeMoveModal() {
   $('move-file-overlay').classList.add('hidden');
-  moveFilePath = '';
+  moveReleaseTrap?.();
+  moveReleaseTrap = null;
+  moveFilePath    = '';
+  // Return focus to the tree item that triggered the modal
+  movePreviousFocus?.focus();
+  movePreviousFocus = null;
 }
 
 async function confirmMove() {
