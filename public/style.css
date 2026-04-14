@@ -85,8 +85,8 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
 }
 .btn-primary:focus-visible {
   outline: 2px solid #fff;
-  outline-offset: 2px;
-  box-shadow: 0 0 0 4px var(--accent);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 4px #0f172a;
 }
 select:focus-visible,
 input:focus-visible,
