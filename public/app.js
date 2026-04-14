@@ -1003,12 +1003,14 @@ async function toggleTimeline() {
       <div class="timeline-header">
         <strong>📅 Decision Timeline</strong>
         <span class="timeline-sub">Commit history — track how content evolved</span>
-        <button class="btn-link" id="btn-timeline-close" style="margin-left:auto">✕ Close</button>
+        <button id="btn-export-log" class="btn btn-sm" style="margin-left:auto">⬇ Export Log</button>
+        <button class="btn-link" id="btn-timeline-close" style="margin-left:8px">✕ Close</button>
       </div>
       <div id="timeline-list" class="timeline-list"><div class="timeline-loading">Loading history…</div></div>
     `;
     document.getElementById('app').appendChild(panel);
     panel.querySelector('#btn-timeline-close').addEventListener('click', toggleTimeline);
+    panel.querySelector('#btn-export-log').addEventListener('click', exportChangeLog);
     // Event delegation for expand buttons (re-rendered each time)
     panel.querySelector('#timeline-list').addEventListener('click', e => {
       const btn = e.target.closest('.timeline-expand-btn');
@@ -1077,6 +1079,39 @@ window.loadCommitFiles = async function(hash) {
 
 function escapeHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function exportChangeLog() {
+  const btn = $('btn-export-log');
+  const original = btn.textContent;
+  btn.textContent = '⏳ Generating…';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/git/export-log');
+    if (!res.ok) throw new Error(`Server error ${res.status}`);
+
+    const blob = await res.blob();
+    const disposition = res.headers.get('Content-Disposition') || '';
+    const match = disposition.match(/filename="([^"]+)"/);
+    const filename = match ? match[1] : 'change-log.md';
+
+    const url = URL.createObjectURL(blob);
+    const a   = document.createElement('a');
+    a.href     = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast('Change log exported', 'success', 2000);
+  } catch (e) {
+    toast('Export failed — ' + e.message, 'error');
+  } finally {
+    btn.textContent = original;
+    btn.disabled = false;
+  }
 }
 
 /* ── File format templates ───────────────────────────────────────────────────── */

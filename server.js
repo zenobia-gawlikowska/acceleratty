@@ -300,6 +300,87 @@ app.get('/api/git/log', async (req, res) => {
   }
 });
 
+app.get('/api/git/export-log', async (req, res) => {
+  try {
+    const log = await git.log({ maxCount: 200 });
+    const now = new Date().toLocaleString('en-GB', {
+      day: '2-digit', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+
+    const lines = [
+      '# Change Log',
+      `> Generated ${now}`,
+      '',
+    ];
+
+    for (const c of log.all) {
+      const date = new Date(c.date).toLocaleString('en-GB', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      });
+
+      lines.push('---', '');
+      lines.push(`## ${c.message.replace(/[#*`_[\]]/g, '\\$&')}`);
+      lines.push('');
+      lines.push(`| | |`);
+      lines.push(`|---|---|`);
+      lines.push(`| **Author** | ${c.author_name} |`);
+      lines.push(`| **Email**  | ${c.author_email} |`);
+      lines.push(`| **When**   | ${date} |`);
+      lines.push(`| **Commit** | \`${c.hash.substring(0, 7)}\` |`);
+      lines.push('');
+
+      try {
+        // Files changed in this commit
+        const filesRaw = await git.raw([
+          'diff-tree', '--no-commit-id', '-r', '--name-status', c.hash
+        ]);
+        const files = filesRaw.trim().split('\n').filter(Boolean).map(line => {
+          const [status, ...parts] = line.split('\t');
+          return { status: status.trim(), file: parts.join('\t') };
+        });
+
+        if (files.length) {
+          const statusLabel = s => ({ A: 'Added', M: 'Modified', D: 'Deleted', R: 'Renamed' }[s[0]] || s);
+          lines.push('### Files changed');
+          lines.push('');
+          files.forEach(f => lines.push(`- **${statusLabel(f.status)}** \`${f.file}\``));
+          lines.push('');
+
+          // Full diff — limit to 500 lines per commit to keep file manageable
+          const diffRaw = await git.raw([
+            'show', '--format=', '-p', '--no-color', c.hash
+          ]);
+          const diffLines = diffRaw.split('\n');
+          const truncated = diffLines.length > 500;
+          const diffBody  = (truncated ? diffLines.slice(0, 500) : diffLines).join('\n').trim();
+
+          if (diffBody) {
+            lines.push('### Exact changes');
+            lines.push('');
+            lines.push('```diff');
+            lines.push(diffBody);
+            if (truncated) lines.push(`\n… (diff truncated — commit has ${diffLines.length} lines)`);
+            lines.push('```');
+            lines.push('');
+          }
+        }
+      } catch (_) {
+        lines.push('_Could not retrieve diff for this commit._', '');
+      }
+    }
+
+    const content = lines.join('\n');
+    const filename = `change-log-${new Date().toISOString().split('T')[0]}.md`;
+    res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(content);
+  } catch (e) {
+    res.status(500).json({ error: safeError(e) });
+  }
+});
+
 app.post('/api/git/commit', async (req, res) => {
   try {
     await git.add('.');
