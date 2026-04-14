@@ -1001,10 +1001,14 @@ async function toggleTimeline() {
     panel.id = 'timeline-panel';
     panel.innerHTML = `
       <div class="timeline-header">
-        <strong>📅 Decision Timeline</strong>
-        <span class="timeline-sub">Commit history — track how content evolved</span>
-        <button id="btn-export-log" class="btn btn-sm" style="margin-left:auto">⬇ Export Log</button>
-        <button class="btn-link" id="btn-timeline-close" style="margin-left:8px">✕ Close</button>
+        <div class="timeline-header-title">
+          <strong>📅 Decision Timeline</strong>
+          <span class="timeline-sub">Commit history — track how content evolved</span>
+        </div>
+        <div class="timeline-header-actions">
+          <button id="btn-export-log" class="btn btn-sm">⬇ Export Log</button>
+          <button class="btn-link" id="btn-timeline-close">✕ Close</button>
+        </div>
       </div>
       <div id="timeline-list" class="timeline-list"><div class="timeline-loading">Loading history…</div></div>
     `;

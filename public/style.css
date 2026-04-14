@@ -968,16 +968,27 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
   to   { transform: translateX(0); }
 }
 .timeline-header {
-  padding: 14px 16px 12px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: baseline;
   gap: 8px;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
   background: var(--bg);
 }
-.timeline-header strong { font-size: 14px; }
-.timeline-sub { font-size: 11px; color: var(--text-muted); flex: 1; }
+.timeline-header-title {
+  flex: 1;
+  min-width: 0;
+}
+.timeline-header-title strong { font-size: 14px; display: block; }
+.timeline-sub { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.timeline-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
 .timeline-list {
   flex: 1;
   overflow-y: auto;
