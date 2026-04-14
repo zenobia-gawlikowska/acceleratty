@@ -387,7 +387,6 @@ dom.fileTree.addEventListener('keydown', e => {
       break;
 
     case 'F2':
-    case 'r':
       e.preventDefault();
       renameItem(focused.dataset.path, focused.dataset.name, isFolder ? 'folder' : 'file');
       break;
