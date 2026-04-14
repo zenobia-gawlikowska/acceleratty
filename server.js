@@ -386,7 +386,20 @@ app.post('/api/git/pull', async (req, res) => {
     await git.raw(['branch', '--set-upstream-to', `origin/${branch}`, branch])
              .catch(() => {});
 
-    const result = await git.pull('origin', branch, { '--no-rebase': null });
+    let result;
+    try {
+      result = await git.pull('origin', branch, { '--no-rebase': null });
+    } catch (pullErr) {
+      // First-time pull between two independently-initialised repos
+      if (/unrelated histories/i.test(pullErr.message || '')) {
+        result = await git.pull('origin', branch, {
+          '--no-rebase': null,
+          '--allow-unrelated-histories': null,
+        });
+      } else {
+        throw pullErr;
+      }
+    }
     const conflicts = await checkConflicts();
     if (conflicts) return res.json({ success: false, hasConflicts: true, conflicts });
     broadcast('git_pulled', { summary: result.summary });
