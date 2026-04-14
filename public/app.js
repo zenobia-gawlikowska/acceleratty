@@ -379,8 +379,7 @@ dom.fileTree.addEventListener('keydown', e => {
       }
       break;
 
-    case 'm':
-    case 'M':
+    case 'F5':
       if (!isFolder) {
         e.preventDefault();
         showMoveModal(focused.dataset.path, focused.dataset.name);
