@@ -218,6 +218,9 @@ function renderTree(items, container, parentPath) {
       const row = document.createElement('div');
       row.className = 'tree-item tree-folder';
       row.dataset.path = item.path;
+      row.dataset.name = item.name;
+      row.dataset.type = 'dir';
+      row.tabIndex = 0;
       row.innerHTML = `
         <span class="tree-folder-toggle open">▶</span>
         <span class="item-icon">📁</span>
@@ -254,6 +257,9 @@ function renderTree(items, container, parentPath) {
       const row = document.createElement('div');
       row.className = 'tree-item' + (item.path === state.currentFile ? ' active' : '');
       row.dataset.path = item.path;
+      row.dataset.name = item.name;
+      row.dataset.type = 'file';
+      row.tabIndex = 0;
       row.innerHTML = `
         <span class="item-icon">📄</span>
         <span class="item-name" title="${item.name}">${item.name.replace(/\.md$/, '')}</span>
@@ -300,6 +306,94 @@ async function renameItem(oldPath, oldName, type) {
     toast(res.error || 'Rename failed', 'error');
   }
 }
+
+/* ── File tree keyboard navigation ──────────────────────────────────────────── */
+
+// Returns all visible (not inside a collapsed folder) tree items in DOM order
+function getVisibleTreeItems() {
+  return [...dom.fileTree.querySelectorAll('.tree-item')].filter(el => {
+    let node = el.parentElement;
+    while (node && node !== dom.fileTree) {
+      if (node.classList.contains('collapsed')) return false;
+      node = node.parentElement;
+    }
+    return true;
+  });
+}
+
+dom.fileTree.addEventListener('keydown', e => {
+  const focused = document.activeElement;
+  if (!focused?.classList.contains('tree-item')) return;
+
+  const isFolder = focused.dataset.type === 'dir';
+  const items    = getVisibleTreeItems();
+  const idx      = items.indexOf(focused);
+
+  switch (e.key) {
+    case 'ArrowDown':
+      e.preventDefault();
+      items[idx + 1]?.focus();
+      break;
+
+    case 'ArrowUp':
+      e.preventDefault();
+      items[idx - 1]?.focus();
+      break;
+
+    case 'ArrowRight':
+      e.preventDefault();
+      if (isFolder) {
+        const childContainer = focused.parentElement.querySelector('.tree-folder-children');
+        if (childContainer?.classList.contains('collapsed')) {
+          focused.click(); // expand
+        } else {
+          // already open — move into first child
+          childContainer?.querySelector('.tree-item')?.focus();
+        }
+      }
+      break;
+
+    case 'ArrowLeft':
+      e.preventDefault();
+      if (isFolder) {
+        const childContainer = focused.parentElement.querySelector('.tree-folder-children');
+        if (childContainer && !childContainer.classList.contains('collapsed')) {
+          focused.click(); // collapse
+          break;
+        }
+      }
+      // Move focus to parent folder row
+      focused.closest('.tree-folder-children')
+             ?.closest('div')          // wrapper
+             ?.querySelector('.tree-folder')
+             ?.focus();
+      break;
+
+    case 'Enter':
+    case ' ':
+      e.preventDefault();
+      if (isFolder) {
+        focused.click();
+      } else {
+        openFile(focused.dataset.path);
+      }
+      break;
+
+    case 'm':
+    case 'M':
+      if (!isFolder) {
+        e.preventDefault();
+        showMoveModal(focused.dataset.path, focused.dataset.name);
+      }
+      break;
+
+    case 'F2':
+    case 'r':
+      e.preventDefault();
+      renameItem(focused.dataset.path, focused.dataset.name, isFolder ? 'folder' : 'file');
+      break;
+  }
+});
 
 /* ── Move file modal ─────────────────────────────────────────────────────────── */
 let moveFilePath = '';
