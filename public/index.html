@@ -253,6 +253,24 @@
       </div>
     </div>
 
+    <!-- Move file modal -->
+    <div id="move-file-overlay" class="modal-overlay hidden">
+      <div class="modal move-file-modal">
+        <div class="modal-header">
+          <h2>📂 Move File</h2>
+        </div>
+        <div class="modal-body">
+          <p class="move-file-name" id="move-file-label"></p>
+          <label class="settings-label" for="move-folder-select">Move to folder</label>
+          <select id="move-folder-select" class="settings-input settings-select"></select>
+        </div>
+        <div class="modal-footer">
+          <button id="btn-move-cancel" class="btn">Cancel</button>
+          <button id="btn-move-confirm" class="btn btn-primary">Move</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Settings modal -->
     <div id="settings-overlay" class="modal-overlay hidden">
       <div class="modal settings-modal">

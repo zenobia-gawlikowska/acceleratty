@@ -862,6 +862,10 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); font
 .conn-status-testing .conn-dot { background: var(--accent); animation: pulse 1s infinite; }
 .conn-status-testing .conn-label { color: var(--accent); }
 
+/* ── Move file modal ─────────────────────────────────────────────────────────── */
+.move-file-modal { max-width: 380px; width: 100%; }
+.move-file-name  { font-weight: 600; margin-bottom: 12px; }
+
 /* ── New file type picker modal ──────────────────────────────────────────────── */
 .new-file-modal {
   max-width: 560px;

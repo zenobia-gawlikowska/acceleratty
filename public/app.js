@@ -3,6 +3,7 @@ const state = {
   currentFile: null,       // relative path
   originalContent: '',     // last-saved content
   mode: 'edit',            // 'edit' | 'split' | 'preview'
+  tree: [],                // last loaded file tree (used by move modal)
   notifications: [],
   gitStatus: null,
   conflicts: [],           // [{file, content}]
@@ -185,10 +186,22 @@ document.addEventListener('click', e => {
 async function loadFiles() {
   dom.fileTree.innerHTML = '<div class="tree-loading">Loading…</div>';
   const tree = await GET('/api/files');
+  state.tree = tree;
   renderTree(tree, dom.fileTree, '');
   if (dom.fileTree.innerHTML === '') {
     dom.fileTree.innerHTML = '<div class="tree-empty">No files yet. Click + File to create one.</div>';
   }
+}
+
+// Collect all folder paths from the tree (recursive), root represented as ''
+function collectFolders(items, result = ['']) {
+  items.forEach(item => {
+    if (item.type === 'dir') {
+      result.push(item.path);
+      collectFolders(item.children, result);
+    }
+  });
+  return result;
 }
 
 function renderTree(items, container, parentPath) {
@@ -245,12 +258,17 @@ function renderTree(items, container, parentPath) {
         <span class="item-icon">📄</span>
         <span class="item-name" title="${item.name}">${item.name.replace(/\.md$/, '')}</span>
         <span class="item-actions">
+          <button class="item-action-btn" data-action="move"   data-path="${item.path}" data-name="${item.name}" title="Move to folder">📂</button>
           <button class="item-action-btn" data-action="rename" data-path="${item.path}" data-name="${item.name}" title="Rename">✏️</button>
         </span>
       `;
       row.addEventListener('click', e => {
         if (e.target.closest('.item-actions')) return;
         openFile(item.path);
+      });
+      row.querySelector('[data-action="move"]')?.addEventListener('click', e => {
+        e.stopPropagation();
+        showMoveModal(item.path, item.name);
       });
       row.querySelector('[data-action="rename"]')?.addEventListener('click', e => {
         e.stopPropagation();
@@ -282,6 +300,64 @@ async function renameItem(oldPath, oldName, type) {
     toast(res.error || 'Rename failed', 'error');
   }
 }
+
+/* ── Move file modal ─────────────────────────────────────────────────────────── */
+let moveFilePath = '';
+
+function showMoveModal(filePath, fileName) {
+  moveFilePath = filePath;
+
+  // Label
+  $('move-file-label').textContent = fileName.replace(/\.md$/, '');
+
+  // Build folder list — exclude the file's current folder
+  const currentFolder = filePath.includes('/')
+    ? filePath.split('/').slice(0, -1).join('/')
+    : '';
+  const folders = collectFolders(state.tree || []);
+
+  const sel = $('move-folder-select');
+  sel.innerHTML = '';
+  folders
+    .filter(f => f !== currentFolder)
+    .forEach(f => {
+      const opt = document.createElement('option');
+      opt.value = f;
+      opt.textContent = f === '' ? '/ (root)' : `📁 ${f}`;
+      sel.appendChild(opt);
+    });
+
+  $('move-file-overlay').classList.remove('hidden');
+}
+
+function closeMoveModal() {
+  $('move-file-overlay').classList.add('hidden');
+  moveFilePath = '';
+}
+
+async function confirmMove() {
+  const dest     = $('move-folder-select').value;
+  const fileName = moveFilePath.split('/').pop();
+  const newPath  = dest ? `${dest}/${fileName}` : fileName;
+
+  if (newPath === moveFilePath) { closeMoveModal(); return; }
+
+  const res = await POST('/api/rename', { oldPath: moveFilePath, newPath });
+  if (res.success) {
+    if (state.currentFile === moveFilePath) state.currentFile = newPath;
+    closeMoveModal();
+    await loadFiles();
+    toast(`Moved to ${dest || 'root'}`, 'success');
+  } else {
+    toast(res.error || 'Move failed', 'error');
+  }
+}
+
+$('btn-move-cancel').addEventListener('click', closeMoveModal);
+$('btn-move-confirm').addEventListener('click', confirmMove);
+$('move-file-overlay').addEventListener('click', e => {
+  if (e.target === $('move-file-overlay')) closeMoveModal();
+});
 
 /* ── File type defaults ──────────────────────────────────────────────────────── */
 const FILE_TYPE_DEFAULTS = {
