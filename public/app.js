@@ -405,6 +405,7 @@ async function openFile(filePath) {
   state.currentFile = filePath;
   state.originalContent = data.content;
   dom.editor.value = data.content;
+  resetUndoHistory(data.content);
   setEditorVisible(true);
 
   const name = filePath.split('/').pop().replace(/\.md$/, '');
@@ -459,9 +460,62 @@ dom.btnDeleteFile.addEventListener('click', async () => {
   }
 });
 
+/* ── Undo / Redo stack ───────────────────────────────────────────────────────── */
+const UNDO_LIMIT = 200;
+let undoStack   = [];
+let redoStack   = [];
+let undoTimer   = null;
+
+function pushUndo(content) {
+  if (undoStack.length && undoStack[undoStack.length - 1] === content) return;
+  undoStack.push(content);
+  if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+  redoStack = [];
+  syncUndoButtons();
+}
+
+function applyUndo(stack, targetStack) {
+  if (stack.length < 2) return;               // need current + at least one previous
+  targetStack.push(stack.pop());              // park current state in the other stack
+  dom.editor.value = stack[stack.length - 1]; // restore previous state
+  setUnsaved(dom.editor.value !== state.originalContent);
+  if (state.mode === 'split') renderPreview();
+  syncUndoButtons();
+}
+
+function syncUndoButtons() {
+  const u = $('fmt-undo'), r = $('fmt-redo');
+  if (u) u.disabled = undoStack.length < 2;
+  if (r) r.disabled = redoStack.length === 0;
+}
+
+function resetUndoHistory(initialContent) {
+  undoStack = [initialContent];
+  redoStack = [];
+  syncUndoButtons();
+}
+
+$('fmt-undo').addEventListener('click', () => applyUndo(undoStack, redoStack));
+$('fmt-redo').addEventListener('click', () => applyUndo(redoStack, undoStack));
+
 dom.editor.addEventListener('input', () => {
   setUnsaved(dom.editor.value !== state.originalContent);
   if (state.mode === 'split') renderPreview();
+  // Debounce: push to undo history 600ms after the user stops typing
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(() => pushUndo(dom.editor.value), 600);
+});
+
+// Keyboard shortcuts: Cmd/Ctrl+Z = undo, Cmd/Ctrl+Shift+Z or Ctrl+Y = redo
+dom.editor.addEventListener('keydown', e => {
+  const mod = e.metaKey || e.ctrlKey;
+  if (mod && e.key === 'z' && !e.shiftKey) {
+    e.preventDefault();
+    applyUndo(undoStack, redoStack);
+  } else if (mod && ((e.key === 'z' && e.shiftKey) || e.key === 'y')) {
+    e.preventDefault();
+    applyUndo(redoStack, undoStack);
+  }
 });
 
 // Autosave on Ctrl/Cmd+S
@@ -655,6 +709,7 @@ document.querySelectorAll('.fmt-btn[data-fmt]').forEach(btn => {
 
 function insertFormat(fmt) {
   const ta = dom.editor;
+  pushUndo(ta.value);                          // snapshot before change
   const start = ta.selectionStart;
   const end   = ta.selectionEnd;
   const sel   = ta.value.substring(start, end) || fmt.placeholder;
@@ -1375,6 +1430,7 @@ function showTemplateMenu() {
         toast('Open or create a file first', 'warning');
       } else {
         const current = dom.editor.value;
+        pushUndo(current);
         dom.editor.value = current + (current ? '\n\n' : '') + TEMPLATES[key];
         dom.editor.dispatchEvent(new Event('input'));
         toast('Template inserted', 'success', 2000);
