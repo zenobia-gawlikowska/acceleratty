@@ -122,8 +122,7 @@ The first time you open Acceleratty, it will prompt you to connect a GitHub repo
 
 Once connected, the sync buttons at the bottom become active:
 - **⬇ Get Updates** — download your teammates' latest changes
-- **📸 Save Snapshot** — save your current work with a description  
-- **⬆ Share Changes** — upload your snapshot so the team can see it
+- **📸 Save & Share** — save your work and immediately upload it to GitHub
 
 ---
 
@@ -159,6 +158,48 @@ acceleratty/          ← App repo (this repository)
 ```
 
 The `content/` folder is excluded from the app repository via `.gitignore`. It maintains its own git history and syncs to whichever content repository you configure.
+
+---
+
+## Updating Acceleratty
+
+When a new version is released, follow the steps below. Your documents are stored in the `content/` folder which is **never touched by an update** — they are completely safe.
+
+### If you installed using git (recommended)
+
+1. Stop the app — press **Ctrl + C** in the terminal
+2. Download the latest changes:
+   ```bash
+   git pull origin main
+   ```
+3. Install any new dependencies:
+   ```bash
+   npm install
+   ```
+4. Start the app again:
+   ```bash
+   npm start
+   ```
+
+That's it. Your settings and documents are untouched.
+
+### If you installed by downloading a ZIP
+
+1. Stop the app — press **Ctrl + C** in the terminal
+2. **Before anything else** — note where your `content/` folder is (it's inside the `acceleratty` folder). Your documents are in there
+3. Download the new ZIP from the [Acceleratty releases page](https://github.com/zenobia-gawlikowska/acceleratty/releases) and unzip it
+4. Copy your existing `content/` folder into the new unzipped folder, replacing the empty one
+5. Open a terminal in the new folder and run:
+   ```bash
+   npm install
+   npm start
+   ```
+
+> **Important:** Never delete your `content/` folder — it holds all your documents and their history. If you've connected a GitHub content repository, your documents are also safely backed up there.
+
+### How to know which version you have
+
+The current version is shown in `package.json` at the top of the project folder. You can also check the [releases page](https://github.com/zenobia-gawlikowska/acceleratty/releases) to see what's new.
 
 ---
 
