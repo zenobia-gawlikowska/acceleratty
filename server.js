@@ -483,8 +483,14 @@ app.post('/api/git/pull', async (req, res) => {
     }
     const conflicts = await checkConflicts();
     if (conflicts) return res.json({ success: false, hasConflicts: true, conflicts });
-    broadcast('git_pulled', { summary: result.summary });
-    res.json({ success: true, result });
+
+    // Normalise files to a consistent array of path strings
+    const pulledFiles = (result.files || []).map(f =>
+      typeof f === 'string' ? f : (f.file || f.path || '')
+    ).filter(Boolean);
+
+    broadcast('git_pulled', { files: pulledFiles, summary: result.summary });
+    res.json({ success: true, result: { ...result, files: pulledFiles } });
   } catch (e) {
     try {
       const conflicts = await checkConflicts();

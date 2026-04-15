@@ -1034,22 +1034,36 @@ dom.btnPull.addEventListener('click', async () => {
     addNotification('⚠️', 'Merge conflict', `${res.conflicts.length} file(s) need resolution`);
     showConflictModal(res.conflicts);
   } else if (res.success) {
-    const summary = res.result?.summary;
-    const msg = summary?.changes > 0
-      ? `${summary.changes} file(s) updated`
-      : 'Already up to date';
+    // Use result.files (array of changed paths) as source of truth —
+    // summary.changes can be undefined/zero after merge commits
+    const files   = res.result?.files   || [];
+    const summary = res.result?.summary || {};
+    const count   = files.length || summary.changes || 0;
+    const msg     = count > 0 ? `${count} file(s) updated` : 'Already up to date';
+
     toast(msg, 'success');
-    if (summary?.changes > 0) {
+
+    // Always refresh the file tree after a successful pull so new files
+    // pulled from the remote always appear, regardless of summary parsing
+    await loadFiles();
+
+    if (count > 0) {
       addNotification('⬇️', 'Updates received', msg);
-      loadFiles();
+      // If the currently open file was among those changed, reload it
       if (state.currentFile) {
-        const fresh = await GET(`/api/file?path=${encodeURIComponent(state.currentFile)}`);
-        if (fresh.content && fresh.content !== dom.editor.value) {
-          state.originalContent = fresh.content;
-          dom.editor.value = fresh.content;
-          setUnsaved(false);
-          if (state.mode !== 'edit') renderPreview();
-          toast('Current file updated from remote', 'info');
+        const wasChanged = files.some(f =>
+          (typeof f === 'string' ? f : f.file || '').replace(/\\/g, '/') === state.currentFile
+        );
+        if (wasChanged || count > 0) {
+          const fresh = await GET(`/api/file?path=${encodeURIComponent(state.currentFile)}`).catch(() => null);
+          if (fresh?.content != null && fresh.content !== dom.editor.value) {
+            state.originalContent = fresh.content;
+            dom.editor.value = fresh.content;
+            resetUndoHistory(fresh.content);
+            setUnsaved(false);
+            if (state.mode !== 'edit') renderPreview();
+            toast('Current file updated from remote', 'info');
+          }
         }
       }
     }
