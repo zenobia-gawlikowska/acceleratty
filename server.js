@@ -467,6 +467,10 @@ app.post('/api/git/pull', async (req, res) => {
     await git.raw(['branch', '--set-upstream-to', `origin/${branch}`, branch])
              .catch(() => {});
 
+    // Snapshot HEAD before pulling so we can diff what actually changed when
+    // simple-git's parser returns empty files[] (common after merge commits).
+    const headBefore = await git.raw(['rev-parse', 'HEAD']).then(s => s.trim()).catch(() => null);
+
     let result;
     try {
       result = await git.pull('origin', branch, { '--no-rebase': null });
@@ -485,9 +489,29 @@ app.post('/api/git/pull', async (req, res) => {
     if (conflicts) return res.json({ success: false, hasConflicts: true, conflicts });
 
     // Normalise files to a consistent array of path strings
-    const pulledFiles = (result.files || []).map(f =>
+    let pulledFiles = (result.files || []).map(f =>
       typeof f === 'string' ? f : (f.file || f.path || '')
     ).filter(Boolean);
+
+    // simple-git sometimes returns an empty files[] after merge commits
+    // (e.g. --allow-unrelated-histories).  Fall back to diffing before/after HEAD.
+    if (pulledFiles.length === 0) {
+      try {
+        const headAfter = await git.raw(['rev-parse', 'HEAD']).then(s => s.trim()).catch(() => null);
+        if (headAfter) {
+          if (headBefore && headAfter !== headBefore) {
+            // Normal case: HEAD moved — diff what changed
+            const diffOut = await git.raw(['diff', '--name-only', headBefore, headAfter]);
+            pulledFiles = diffOut.split('\n').map(s => s.trim()).filter(Boolean);
+          } else if (!headBefore) {
+            // Edge case: local had no commits before pull (empty repo first pull)
+            // List everything that landed in the new HEAD commit
+            const diffOut = await git.raw(['diff-tree', '--no-commit-id', '-r', '--name-only', headAfter]);
+            pulledFiles = diffOut.split('\n').map(s => s.trim()).filter(Boolean);
+          }
+        }
+      } catch (_) {}
+    }
 
     broadcast('git_pulled', { files: pulledFiles, summary: result.summary });
     res.json({ success: true, result: { ...result, files: pulledFiles } });
