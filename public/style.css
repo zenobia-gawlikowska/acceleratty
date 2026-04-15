@@ -365,11 +365,13 @@ textarea:focus-visible {
 }
 .editor-textarea::placeholder { color: var(--border); }
 
-.preview-pane { overflow-y: auto; background: var(--surface); }
+.preview-pane { overflow-y: auto; overflow-x: hidden; background: var(--surface); }
 .preview-content {
   max-width: 720px;
+  width: 100%;
+  box-sizing: border-box;
   margin: 0 auto;
-  padding: 24px 32px 48px;
+  padding: 24px clamp(16px, 4vw, 32px) 48px;
 }
 
 /* Split mode — widths set via inline style by JS; divider handle between panes */
@@ -443,7 +445,8 @@ textarea:focus-visible {
   font-size: .88em;
   line-height: 1.6;
 }
-.markdown-body table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+.markdown-body .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 1em 0; }
+.markdown-body table { border-collapse: collapse; width: 100%; margin: 0; min-width: 400px; }
 .markdown-body th, .markdown-body td {
   border: 1px solid var(--border);
   padding: 8px 12px;
@@ -1288,8 +1291,7 @@ textarea:focus-visible {
   .settings-section { padding: 14px 16px; }
   .settings-section-status { flex-direction: column; align-items: flex-start; gap: 10px; }
 
-  /* ── Preview content padding ── */
-  .preview-content { padding: 16px 16px 48px; }
+  /* ── Preview content padding — clamp() handles this now ── */
 
   /* ── Toast position ── */
   .toast-container { right: 8px; left: 8px; bottom: calc(var(--sync-h) + 8px); }

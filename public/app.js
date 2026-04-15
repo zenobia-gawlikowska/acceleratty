@@ -843,6 +843,15 @@ function renderPreview() {
   // H3 — sanitise rendered HTML before injecting into the DOM
   const safe = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(raw) : raw;
   dom.previewContent.innerHTML = safe;
+  // Wrap tables in a scrollable div so they don't overflow on narrow screens
+  dom.previewContent.querySelectorAll('table').forEach(table => {
+    if (!table.parentElement.classList.contains('table-wrap')) {
+      const wrap = document.createElement('div');
+      wrap.className = 'table-wrap';
+      table.parentNode.insertBefore(wrap, table);
+      wrap.appendChild(table);
+    }
+  });
   addCopyButtons();
 }
 
