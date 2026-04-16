@@ -115,7 +115,7 @@ const git = simpleGit(WORKSPACE);
   }
 })();
 
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '10mb' }));
 
 // H3 — Content-Security-Policy: lock down script sources to self + the one CDN
 // used for marked.js and DOMPurify. No inline scripts, no eval.
@@ -175,12 +175,16 @@ const watcher = chokidar.watch(WORKSPACE, {
 watcher.on('add', fp => {
   const rel = path.relative(WORKSPACE, fp);
   if (pendingIgnore.has(rel)) { pendingIgnore.delete(rel); return; }
-  if (fp.endsWith('.md')) broadcast('file_added', { path: rel, name: path.basename(fp) });
+  const ext = path.extname(fp).toLowerCase();
+  if (fp.endsWith('.md') || IMAGE_EXTS.has(ext))
+    broadcast('file_added', { path: rel, name: path.basename(fp) });
 });
 watcher.on('change', fp => {
   const rel = path.relative(WORKSPACE, fp);
   if (pendingIgnore.has(rel)) { pendingIgnore.delete(rel); return; }
-  if (fp.endsWith('.md')) broadcast('file_changed', { path: rel, name: path.basename(fp) });
+  const ext = path.extname(fp).toLowerCase();
+  if (fp.endsWith('.md') || IMAGE_EXTS.has(ext))
+    broadcast('file_changed', { path: rel, name: path.basename(fp) });
 });
 watcher.on('unlink', fp => {
   const rel = path.relative(WORKSPACE, fp);
@@ -198,6 +202,8 @@ function safePath(relPath) {
   return resolved;
 }
 
+const IMAGE_EXTS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp']);
+
 // ── File tree ─────────────────────────────────────────────────────────────────
 function buildTree(dir, base) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -205,12 +211,15 @@ function buildTree(dir, base) {
   for (const e of entries) {
     if (e.name.startsWith('.') || e.name === 'node_modules') continue;
     const full = path.join(dir, e.name);
-    const rel = path.relative(base, full);
+    const rel  = path.relative(base, full);
     if (e.isDirectory()) {
       items.push({ type: 'dir', name: e.name, path: rel, children: buildTree(full, base) });
     } else if (e.name.endsWith('.md')) {
       const stat = fs.statSync(full);
       items.push({ type: 'file', name: e.name, path: rel, modified: stat.mtime });
+    } else if (IMAGE_EXTS.has(path.extname(e.name).toLowerCase())) {
+      const stat = fs.statSync(full);
+      items.push({ type: 'image', name: e.name, path: rel, modified: stat.mtime });
     }
   }
   return items.sort((a, b) => {
@@ -231,6 +240,40 @@ app.get('/api/file', (req, res) => {
     res.json({ content: fs.readFileSync(fp, 'utf-8') });
   } catch (e) {
     res.status(e.message.includes('Access denied') ? 403 : 500).json({ error: e.message });
+  }
+});
+
+app.get('/api/file/raw', (req, res) => {
+  try {
+    const fp = safePath(req.query.path);
+    const ext = path.extname(fp).toLowerCase();
+    const MIME = { '.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg',
+                   '.gif':'image/gif','.webp':'image/webp' };
+    const mime = MIME[ext] || 'application/octet-stream';
+    res.setHeader('Content-Type', mime);
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.send(fs.readFileSync(fp));
+  } catch (e) {
+    res.status(e.message.includes('Access denied') ? 403 : 404).json({ error: e.message });
+  }
+});
+
+app.post('/api/image', (req, res) => {
+  try {
+    const { data, folder = '' } = req.body;
+    if (!data) throw new Error('No image data');
+
+    // Generate a timestamped filename
+    const ts  = new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 17); // 20260416143022123
+    const rel = folder ? `${folder}/screenshot-${ts}.png` : `screenshot-${ts}.png`;
+    const fp  = safePath(rel);
+
+    fs.mkdirSync(path.dirname(fp), { recursive: true });
+    pendingIgnore.add(rel);
+    fs.writeFileSync(fp, Buffer.from(data, 'base64'));
+    res.json({ success: true, path: rel });
+  } catch (e) {
+    res.status(e.message.includes('Access denied') ? 403 : 500).json({ error: safeError(e) });
   }
 });
 

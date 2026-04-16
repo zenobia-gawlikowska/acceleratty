@@ -12,6 +12,9 @@ const state = {
   createParentPath: null,
 };
 
+const IMAGE_EXTS_CLIENT = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp']);
+function isImageFile(p) { return IMAGE_EXTS_CLIENT.has(p.slice(p.lastIndexOf('.')).toLowerCase()); }
+
 /* ── DOM refs ────────────────────────────────────────────────────────────────── */
 const $ = id => document.getElementById(id);
 const dom = {
@@ -258,28 +261,51 @@ function renderTree(items, container, parentPath) {
       row.className = 'tree-item' + (item.path === state.currentFile ? ' active' : '');
       row.dataset.path = item.path;
       row.dataset.name = item.name;
-      row.dataset.type = 'file';
+      row.dataset.type = item.type; // 'file' or 'image'
       row.tabIndex = 0;
-      row.innerHTML = `
-        <span class="item-icon">📄</span>
-        <span class="item-name" title="${item.name}">${item.name.replace(/\.md$/, '')}</span>
-        <span class="item-actions">
-          <button class="item-action-btn" data-action="move"   data-path="${item.path}" data-name="${item.name}" title="Move to folder">📂</button>
-          <button class="item-action-btn" data-action="rename" data-path="${item.path}" data-name="${item.name}" title="Rename">✏️</button>
-        </span>
-      `;
-      row.addEventListener('click', e => {
-        if (e.target.closest('.item-actions')) return;
-        openFile(item.path);
-      });
-      row.querySelector('[data-action="move"]')?.addEventListener('click', e => {
-        e.stopPropagation();
-        showMoveModal(item.path, item.name);
-      });
-      row.querySelector('[data-action="rename"]')?.addEventListener('click', e => {
-        e.stopPropagation();
-        renameItem(item.path, item.name, 'file');
-      });
+
+      if (item.type === 'image') {
+        row.innerHTML = `
+          <span class="item-icon">🖼️</span>
+          <span class="item-name" title="${item.name}">${item.name}</span>
+          <span class="item-actions">
+            <button class="item-action-btn" data-action="delete-image" data-path="${item.path}" data-name="${item.name}" title="Delete">🗑️</button>
+          </span>
+        `;
+        row.addEventListener('click', e => {
+          if (e.target.closest('.item-actions')) return;
+          openImageFile(item.path);
+        });
+        row.querySelector('[data-action="delete-image"]')?.addEventListener('click', e => {
+          e.stopPropagation();
+          if (!confirm(`Delete "${item.name}"?`)) return;
+          DEL(`/api/file?path=${encodeURIComponent(item.path)}`).then(r => {
+            if (r.success) { loadFiles(); toast(`Deleted ${item.name}`, 'info'); }
+            else toast(r.error || 'Delete failed', 'error');
+          });
+        });
+      } else {
+        row.innerHTML = `
+          <span class="item-icon">📄</span>
+          <span class="item-name" title="${item.name}">${item.name.replace(/\.md$/, '')}</span>
+          <span class="item-actions">
+            <button class="item-action-btn" data-action="move"   data-path="${item.path}" data-name="${item.name}" title="Move to folder">📂</button>
+            <button class="item-action-btn" data-action="rename" data-path="${item.path}" data-name="${item.name}" title="Rename">✏️</button>
+          </span>
+        `;
+        row.addEventListener('click', e => {
+          if (e.target.closest('.item-actions')) return;
+          openFile(item.path);
+        });
+        row.querySelector('[data-action="move"]')?.addEventListener('click', e => {
+          e.stopPropagation();
+          showMoveModal(item.path, item.name);
+        });
+        row.querySelector('[data-action="rename"]')?.addEventListener('click', e => {
+          e.stopPropagation();
+          renameItem(item.path, item.name, 'file');
+        });
+      }
       container.appendChild(row);
     }
   });
@@ -604,6 +630,7 @@ async function confirmCreateFolder() {
 
 /* ── Open / save file ────────────────────────────────────────────────────────── */
 async function openFile(filePath) {
+  if (isImageFile(filePath)) { openImageFile(filePath); return; }
   if (state.currentFile && state.originalContent !== dom.editor.value) {
     const ok = confirm('You have unsaved changes. Discard them and open another file?');
     if (!ok) return;
@@ -612,6 +639,7 @@ async function openFile(filePath) {
   if (data.error) { toast(data.error, 'error'); return; }
 
   state.currentFile = filePath;
+  state.currentFileType = 'md';
   state.originalContent = data.content;
   dom.editor.value = data.content;
   resetUndoHistory(data.content);
@@ -631,6 +659,56 @@ function highlightActiveFile(filePath) {
   document.querySelectorAll('.tree-item').forEach(el => {
     el.classList.toggle('active', el.dataset.path === filePath);
   });
+}
+
+async function openImageFile(filePath) {
+  // Warn if there's unsaved markdown work
+  if (state.currentFile && state.currentFileType !== 'image' && state.originalContent !== dom.editor.value) {
+    if (!confirm('You have unsaved changes. Discard them and open another file?')) return;
+  }
+
+  state.currentFile     = filePath;
+  state.currentFileType = 'image';
+  state.originalContent = '';
+
+  const name = filePath.split('/').pop();
+  dom.currentFileLabel.textContent = filePath;
+  document.title = `AcceleraTTy — ${name}`;
+  setUnsaved(false);
+
+  // Show image viewer: hide tabs and format bar, show only preview pane
+  dom.welcome.classList.add('hidden');
+  $('toolbar-tabs').classList.add('hidden');
+  dom.formatBar.classList.add('hidden');
+  dom.btnDeleteFile.classList.remove('hidden');
+  dom.paneEdit.classList.add('hidden');
+  $('split-divider').classList.add('hidden');
+  dom.panePreview.classList.remove('hidden');
+
+  const src = `/api/file/raw?path=${encodeURIComponent(filePath)}`;
+  dom.previewContent.innerHTML = `
+    <div class="image-viewer">
+      <img src="${escapeHtml(src)}" alt="${escapeHtml(name)}" class="image-viewer-img" />
+      <div class="image-viewer-meta">${escapeHtml(name)}</div>
+      <div class="image-viewer-actions">
+        <button class="btn btn-sm" id="btn-copy-image">📋 Copy image</button>
+      </div>
+    </div>
+  `;
+
+  $('btn-copy-image').addEventListener('click', async () => {
+    try {
+      const r = await fetch(src);
+      const blob = await r.blob();
+      await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+      toast('Image copied to clipboard', 'success');
+    } catch {
+      toast('Copy failed — try right-clicking the image instead', 'warning');
+    }
+  });
+
+  highlightActiveFile(filePath);
+  if (isMobile()) closeSidebar();
 }
 
 async function saveFile() {
@@ -658,6 +736,7 @@ dom.btnDeleteFile.addEventListener('click', async () => {
   const res = await DEL(`/api/file?path=${encodeURIComponent(state.currentFile)}`);
   if (res.success) {
     state.currentFile = null;
+    state.currentFileType = null;
     setEditorVisible(false);
     dom.currentFileLabel.textContent = '';
     document.title = 'AcceleraTTy';
@@ -723,6 +802,56 @@ dom.editor.addEventListener('input', () => {
   // Debounce: push to undo history 600ms after the user stops typing
   clearTimeout(undoTimer);
   undoTimer = setTimeout(() => pushUndo(dom.editor.value), 600);
+});
+
+// ── Image paste & drag-drop into editor ──────────────────────────────────────
+
+async function uploadAndInsertImage(blob) {
+  const reader = new FileReader();
+  reader.readAsDataURL(blob);
+  return new Promise(resolve => {
+    reader.onload = async () => {
+      const base64 = reader.result.split(',')[1];
+      const folder = state.currentFile ? state.currentFile.split('/').slice(0, -1).join('/') : '';
+      setBusy('Uploading image…');
+      const res = await POST('/api/image', { data: base64, folder });
+      clearBusy();
+      if (res.success) {
+        const altText = res.path.split('/').pop().replace(/\.\w+$/, '');
+        const md = `\n![${altText}](/api/file/raw?path=${encodeURIComponent(res.path)})\n`;
+        insertAtCursor(md);
+        await loadFiles();
+        toast('Screenshot inserted', 'success');
+      } else {
+        toast(res.error || 'Image upload failed', 'error');
+      }
+      resolve();
+    };
+  });
+}
+
+dom.editor.addEventListener('paste', async e => {
+  const items = Array.from(e.clipboardData?.items || []);
+  const imgItem = items.find(i => i.type.startsWith('image/'));
+  if (!imgItem) return;
+  e.preventDefault();
+  await uploadAndInsertImage(imgItem.getAsFile());
+});
+
+// Drag-and-drop image onto the editor area
+dom.paneEdit.addEventListener('dragover', e => {
+  if (Array.from(e.dataTransfer.items).some(i => i.type.startsWith('image/'))) {
+    e.preventDefault();
+    dom.paneEdit.classList.add('drag-over');
+  }
+});
+dom.paneEdit.addEventListener('dragleave', () => dom.paneEdit.classList.remove('drag-over'));
+dom.paneEdit.addEventListener('drop', async e => {
+  dom.paneEdit.classList.remove('drag-over');
+  const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+  if (!files.length) return;
+  e.preventDefault();
+  for (const file of files) await uploadAndInsertImage(file);
 });
 
 // Keyboard shortcuts: Cmd/Ctrl+Z = undo, Cmd/Ctrl+Shift+Z or Ctrl+Y = redo
@@ -934,6 +1063,15 @@ document.querySelectorAll('.fmt-btn[data-fmt]').forEach(btn => {
     insertFormat(fmt);
   });
 });
+
+function insertAtCursor(text) {
+  const ta = dom.editor;
+  pushUndo(ta.value);
+  const start = ta.selectionStart ?? ta.value.length;
+  ta.setRangeText(text, start, ta.selectionEnd ?? start, 'end');
+  ta.dispatchEvent(new Event('input'));
+  ta.focus();
+}
 
 function insertFormat(fmt) {
   const ta = dom.editor;

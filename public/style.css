@@ -1305,3 +1305,34 @@ textarea:focus-visible {
   :root { --sidebar-w: 260px; }
   .preview-content { max-width: 800px; }
 }
+
+/* ── Image viewer ─────────────────────────────────────────────────────────── */
+.image-viewer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 32px clamp(16px, 4vw, 48px);
+}
+.image-viewer-img {
+  max-width: 100%;
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(0,0,0,.35);
+  display: block;
+}
+.image-viewer-meta {
+  font-size: 13px;
+  color: var(--muted);
+  font-family: var(--font-mono, monospace);
+}
+.image-viewer-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Drag-over highlight on the edit pane */
+.pane.drag-over {
+  outline: 2px dashed var(--accent);
+  outline-offset: -4px;
+  background: rgba(99,102,241,.06);
+}
