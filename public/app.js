@@ -338,6 +338,7 @@ function renderTree(items, container, parentPath) {
           <span class="item-actions">
             <button class="item-action-btn" data-action="move"   data-path="${item.path}" data-name="${item.name}" title="Move to folder">📂</button>
             <button class="item-action-btn" data-action="rename" data-path="${item.path}" data-name="${item.name}" title="Rename">✏️</button>
+            <button class="item-action-btn item-action-btn--danger" data-action="delete-file" data-path="${item.path}" data-name="${item.name}" title="Delete">🗑️</button>
           </span>
         `;
         row.addEventListener('click', e => {
@@ -351,6 +352,26 @@ function renderTree(items, container, parentPath) {
         row.querySelector('[data-action="rename"]')?.addEventListener('click', e => {
           e.stopPropagation();
           renameItem(item.path, item.name, 'file');
+        });
+        row.querySelector('[data-action="delete-file"]')?.addEventListener('click', e => {
+          e.stopPropagation();
+          if (!confirm(`Delete "${item.name.replace(/\.md$/, '')}"? This cannot be undone.`)) return;
+          DEL(`/api/file?path=${encodeURIComponent(item.path)}`).then(r => {
+            if (r.success) {
+              if (state.currentFile === item.path) {
+                state.currentFile = null;
+                state.currentFileType = null;
+                setEditorVisible(false);
+                dom.currentFileLabel.textContent = '';
+                document.title = 'AcceleraTTy';
+                setUnsaved(false);
+              }
+              loadFiles();
+              toast(`Deleted "${item.name.replace(/\.md$/, '')}"`, 'info');
+            } else {
+              toast(r.error || 'Delete failed', 'error');
+            }
+          });
         });
       }
       container.appendChild(row);
