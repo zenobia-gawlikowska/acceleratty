@@ -619,7 +619,7 @@ async function openFile(filePath) {
 
   const name = filePath.split('/').pop().replace(/\.md$/, '');
   dom.currentFileLabel.textContent = filePath;
-  document.title = `${name} — Acceleratty`;
+  document.title = `AcceleraTTy — ${name}`;
 
   setUnsaved(false);
   setMode('preview');
@@ -660,7 +660,7 @@ dom.btnDeleteFile.addEventListener('click', async () => {
     state.currentFile = null;
     setEditorVisible(false);
     dom.currentFileLabel.textContent = '';
-    document.title = 'Acceleratty';
+    document.title = 'AcceleraTTy';
     setUnsaved(false);
     loadFiles();
     toast('File deleted', 'info');
