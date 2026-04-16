@@ -190,7 +190,8 @@ function renderNotifList() {
 
 dom.notifToggle.addEventListener('click', e => {
   e.stopPropagation();
-  dom.notifPanel.classList.toggle('hidden');
+  const open = dom.notifPanel.classList.toggle('hidden') === false;
+  dom.notifToggle.setAttribute('aria-expanded', String(open));
 });
 dom.btnClearNotifs.addEventListener('click', () => {
   state.notifications = [];
@@ -252,9 +253,9 @@ function renderTree(items, container, parentPath) {
         <span class="item-icon">📁</span>
         <span class="item-name" title="${item.name}">${item.name}</span>
         <span class="item-actions">
-          <button class="item-action-btn" data-action="new-file-in" data-path="${item.path}" title="New file here">+📄</button>
-          <button class="item-action-btn" data-action="rename-dir" data-path="${item.path}" data-name="${item.name}" title="Rename">✏️</button>
-          <button class="item-action-btn item-action-btn--danger" data-action="delete-dir" data-path="${item.path}" data-name="${item.name}" title="Delete folder">🗑️</button>
+          <button class="item-action-btn" data-action="new-file-in" data-path="${item.path}" title="New file here" aria-label="New file in ${item.name}"><span aria-hidden="true">+📄</span></button>
+          <button class="item-action-btn" data-action="rename-dir" data-path="${item.path}" data-name="${item.name}" title="Rename" aria-label="Rename ${item.name}"><span aria-hidden="true">✏️</span></button>
+          <button class="item-action-btn item-action-btn--danger" data-action="delete-dir" data-path="${item.path}" data-name="${item.name}" title="Delete folder" aria-label="Delete folder ${item.name}"><span aria-hidden="true">🗑️</span></button>
         </span>
       `;
       const children = document.createElement('div');
@@ -318,7 +319,7 @@ function renderTree(items, container, parentPath) {
           <span class="item-icon">🖼️</span>
           <span class="item-name" title="${item.name}">${item.name}</span>
           <span class="item-actions">
-            <button class="item-action-btn" data-action="delete-image" data-path="${item.path}" data-name="${item.name}" title="Delete">🗑️</button>
+            <button class="item-action-btn" data-action="delete-image" data-path="${item.path}" data-name="${item.name}" title="Delete" aria-label="Delete ${item.name}"><span aria-hidden="true">🗑️</span></button>
           </span>
         `;
         row.addEventListener('click', e => {
@@ -338,9 +339,9 @@ function renderTree(items, container, parentPath) {
           <span class="item-icon">📄</span>
           <span class="item-name" title="${item.name}">${item.name.replace(/\.md$/, '')}</span>
           <span class="item-actions">
-            <button class="item-action-btn" data-action="move"   data-path="${item.path}" data-name="${item.name}" title="Move to folder">📂</button>
-            <button class="item-action-btn" data-action="rename" data-path="${item.path}" data-name="${item.name}" title="Rename">✏️</button>
-            <button class="item-action-btn item-action-btn--danger" data-action="delete-file" data-path="${item.path}" data-name="${item.name}" title="Delete">🗑️</button>
+            <button class="item-action-btn" data-action="move"   data-path="${item.path}" data-name="${item.name}" title="Move to folder" aria-label="Move ${item.name} to folder"><span aria-hidden="true">📂</span></button>
+            <button class="item-action-btn" data-action="rename" data-path="${item.path}" data-name="${item.name}" title="Rename" aria-label="Rename ${item.name}"><span aria-hidden="true">✏️</span></button>
+            <button class="item-action-btn item-action-btn--danger" data-action="delete-file" data-path="${item.path}" data-name="${item.name}" title="Delete" aria-label="Delete ${item.name}"><span aria-hidden="true">🗑️</span></button>
           </span>
         `;
         row.addEventListener('click', e => {

@@ -13,7 +13,7 @@
     <!-- Header -->
     <header class="header" aria-label="Application header">
       <div class="header-left">
-        <button id="btn-sidebar-toggle" class="btn btn-icon sidebar-toggle-btn" title="Toggle sidebar" aria-expanded="true" aria-controls="sidebar">☰</button>
+        <button id="btn-sidebar-toggle" class="btn btn-icon sidebar-toggle-btn" title="Toggle sidebar" aria-label="Toggle sidebar" aria-expanded="true" aria-controls="sidebar"><span aria-hidden="true">☰</span></button>
         <span class="logo" aria-hidden="true">⚡ AcceleraTTy</span>
       </div>
       <div class="header-center">
@@ -23,12 +23,12 @@
       <div class="header-right">
         <button id="btn-save" class="btn btn-primary" disabled>💾 Save</button>
         <div class="notif-wrapper">
-          <button id="btn-notif-toggle" class="btn btn-icon" title="Notifications">
-            🔔
-            <span id="notif-badge" class="badge hidden">0</span>
+          <button id="btn-notif-toggle" class="btn btn-icon" title="Notifications" aria-label="Notifications" aria-haspopup="true" aria-expanded="false">
+            <span aria-hidden="true">🔔</span>
+            <span id="notif-badge" class="badge hidden" aria-label="unread notifications">0</span>
           </button>
         </div>
-        <button id="btn-settings" class="btn btn-icon" title="Profile &amp; Repository Settings">⚙️</button>
+        <button id="btn-settings" class="btn btn-icon" title="Profile &amp; Repository Settings" aria-label="Profile and Repository Settings"><span aria-hidden="true">⚙️</span></button>
       </div>
     </header>
 
@@ -87,18 +87,18 @@
             <button id="tab-preview" class="tab">Preview</button>
           </div>
           <div class="format-bar hidden" id="format-bar">
-            <button id="fmt-undo" class="fmt-btn" title="Undo (⌘Z)" disabled>↩ Undo</button>
-            <button id="fmt-redo" class="fmt-btn" title="Redo (⌘⇧Z)" disabled>↪ Redo</button>
-            <span class="fmt-sep"></span>
-            <button class="fmt-btn" data-fmt="bold" title="Bold">B</button>
-            <button class="fmt-btn" data-fmt="italic" title="Italic"><em>I</em></button>
-            <button class="fmt-btn" data-fmt="h1" title="Heading 1">H1</button>
-            <button class="fmt-btn" data-fmt="h2" title="Heading 2">H2</button>
-            <button class="fmt-btn" data-fmt="bullet" title="Bullet list">• List</button>
-            <button class="fmt-btn" data-fmt="code" title="Code block">{ }</button>
-            <button class="fmt-btn" data-fmt="link" title="Link">🔗</button>
-            <span class="fmt-sep"></span>
-            <button id="btn-copy-all" class="fmt-btn" title="Copy entire document">Copy All</button>
+            <button id="fmt-undo" class="fmt-btn" title="Undo (⌘Z)" aria-label="Undo" disabled><span aria-hidden="true">↩</span> Undo</button>
+            <button id="fmt-redo" class="fmt-btn" title="Redo (⌘⇧Z)" aria-label="Redo" disabled><span aria-hidden="true">↪</span> Redo</button>
+            <span class="fmt-sep" aria-hidden="true"></span>
+            <button class="fmt-btn" data-fmt="bold" title="Bold" aria-label="Bold">B</button>
+            <button class="fmt-btn" data-fmt="italic" title="Italic" aria-label="Italic"><em aria-hidden="true">I</em></button>
+            <button class="fmt-btn" data-fmt="h1" title="Heading 1" aria-label="Heading 1">H1</button>
+            <button class="fmt-btn" data-fmt="h2" title="Heading 2" aria-label="Heading 2">H2</button>
+            <button class="fmt-btn" data-fmt="bullet" title="Bullet list" aria-label="Bullet list"><span aria-hidden="true">•</span> List</button>
+            <button class="fmt-btn" data-fmt="code" title="Code block" aria-label="Code block"><span aria-hidden="true">{ }</span></button>
+            <button class="fmt-btn" data-fmt="link" title="Link" aria-label="Insert link"><span aria-hidden="true">🔗</span></button>
+            <span class="fmt-sep" aria-hidden="true"></span>
+            <button id="btn-copy-all" class="fmt-btn" title="Copy entire document" aria-label="Copy entire document">Copy All</button>
           </div>
           <div class="toolbar-right">
             <button id="btn-delete-file" class="btn btn-sm btn-danger hidden">Delete</button>
@@ -283,7 +283,7 @@
             <h2>⚙️ Profile &amp; Content Repository</h2>
             <p>Configure your identity and connect the GitHub repository where <strong>your documents</strong> will be stored. This is separate from the AcceleraTTy app itself.</p>
           </div>
-          <button id="btn-settings-close" class="btn btn-icon settings-close-btn">✕</button>
+          <button id="btn-settings-close" class="btn btn-icon settings-close-btn" aria-label="Close settings"><span aria-hidden="true">✕</span></button>
         </div>
 
         <div class="settings-body">
