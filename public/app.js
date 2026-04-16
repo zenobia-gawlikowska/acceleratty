@@ -1961,8 +1961,33 @@ dom.btnTestConn.addEventListener('click', async () => {
 
 // Save settings
 dom.btnSettingsSave.addEventListener('click', async () => {
+  const repoUrl = dom.sRepoUrl.value.trim();
+  dom.btnSettingsSave.disabled = true;
+  dom.btnSettingsSave.textContent = 'Saving…';
+
   const saved = await saveSettingsToServer(false);
-  if (saved) {
+
+  dom.btnSettingsSave.disabled = false;
+  dom.btnSettingsSave.textContent = 'Save Settings';
+
+  if (!saved) return;
+
+  // If a repo URL is set, verify the connection before closing so the user
+  // immediately knows if the URL is wrong or the token doesn't work.
+  if (repoUrl) {
+    setConnStatus('testing', 'Verifying connection…');
+    const testRes = await POST('/api/git/test-connection', {});
+    if (testRes.success) {
+      setConnStatus('ok', 'Connected ✓');
+      closeSettings();
+      toast('Settings saved ✓', 'success');
+    } else {
+      // Keep modal open — let user fix the problem
+      setConnStatus('error', testRes.message || 'Connection failed');
+      toast(testRes.message || 'Connection failed — check your token', 'error', 0);
+      dom.sToken.focus();
+    }
+  } else {
     closeSettings();
     toast('Settings saved', 'success');
   }

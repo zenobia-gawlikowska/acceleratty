@@ -746,11 +746,16 @@ app.post('/api/settings', async (req, res) => {
         } catch (_) {}
       }
 
-      // Embed credentials for push/pull — only for https
-      if (effectiveUser && effectiveToken) {
-        parsed.username = encodeURIComponent(effectiveUser);
-        parsed.password = encodeURIComponent(effectiveToken);
+      // Require credentials — without them every push/pull will silently fail
+      if (!effectiveUser || !effectiveToken) {
+        return res.status(400).json({
+          error: 'Please enter your GitHub username and Personal Access Token — they are required to sync with the repository'
+        });
       }
+
+      // Embed credentials for push/pull
+      parsed.username = encodeURIComponent(effectiveUser);
+      parsed.password = encodeURIComponent(effectiveToken);
 
       const urlWithCreds = parsed.toString();
       const remotes = await git.getRemotes().catch(() => []);
