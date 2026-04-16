@@ -61,6 +61,9 @@ function friendlyGitError(e) {
   if (/rejected.*non-fast-forward|fetch first/i.test(msg)) {
     return 'Your local copy is behind the remote — click ⬇ Get Updates first, then try again';
   }
+  if (/please commit your changes|commit or stash|would be overwritten by merge/i.test(msg)) {
+    return 'You have unsaved changes — click 💾 Save then 📸 Save & Share before getting updates';
+  }
   if (/nothing to push/i.test(msg)) {
     return 'Nothing to push — save a snapshot first';
   }
@@ -536,32 +539,108 @@ app.post('/api/git/pull', async (req, res) => {
     const status = await git.status();
     if (status.conflicted.length === 0) return null;
 
+    // Read full porcelain output so we can tell the conflict *type* for each
+    // file.  The two-char XY code tells us what happened on each side:
+    //   UU = both modified (text conflict markers present in file)
+    //   UD = we modified,  they deleted  → backup ours, accept deletion
+    //   DU = we deleted,   they modified → accept their version, no backup
+    //   DD = both deleted                → remove from index, nothing to keep
+    //   AA = both added / rename-rename  → keep file(s) as-is if no markers
+    const porcelainOut = await git.raw(['status', '--porcelain']).catch(() => '');
+    const conflictCodes = {}; // relPath → 'UU' | 'UD' | 'DU' | 'DD' | 'AA' …
+    for (const line of porcelainOut.split('\n')) {
+      if (line.length < 3) continue;
+      const xy   = line.slice(0, 2).toUpperCase();
+      // Rename entries look like "old -> new"; keep the new path
+      const file = line.slice(3).split(' -> ').pop().trim();
+      conflictCodes[file] = xy;
+    }
+
     const backups = [];
-    for (const file of status.conflicted) {
-      const fp = path.join(WORKSPACE, file);
-      let raw;
-      try { raw = fs.readFileSync(fp, 'utf-8'); } catch { continue; }
 
-      const oursContent   = extractConflictSide(raw, 'ours');
-      const theirsContent = extractConflictSide(raw, 'theirs');
-      const backupRel     = nextBackupPath(file);
-      const backupFp      = path.join(WORKSPACE, backupRel);
+    for (const relPath of status.conflicted) {
+      const fp   = path.join(WORKSPACE, relPath);
+      const code = conflictCodes[relPath] || 'UU';
 
-      // Accept theirs on the original path
-      pendingIgnore.add(file);
-      fs.writeFileSync(fp, theirsContent, 'utf-8');
-      await git.add(file);
+      try {
+        // ── Both sides deleted ──────────────────────────────────────────────
+        if (code === 'DD') {
+          await git.rm([relPath]).catch(() => {});
+          continue;
+        }
 
-      // Preserve ours as a numbered backup
-      pendingIgnore.add(backupRel);
-      fs.writeFileSync(backupFp, oursContent, 'utf-8');
-      await git.add(backupRel);
+        // ── We deleted it, they modified it → accept their version ──────────
+        // git already placed their content on disk; just stage it.
+        if (code === 'DU') {
+          if (fs.existsSync(fp)) await git.add(relPath);
+          continue;
+        }
 
-      backups.push({ original: file, backup: backupRel });
+        // ── We modified it, they deleted it → backup ours, accept deletion ──
+        if (code === 'UD') {
+          if (fs.existsSync(fp)) {
+            const oursContent = fs.readFileSync(fp, 'utf-8');
+            if (oursContent.trim()) {
+              const backupRel = nextBackupPath(relPath);
+              pendingIgnore.add(backupRel);
+              fs.writeFileSync(path.join(WORKSPACE, backupRel), oursContent, 'utf-8');
+              await git.add(backupRel);
+              backups.push({ original: relPath, backup: backupRel });
+            }
+          }
+          await git.rm([relPath]).catch(() => {}); // accept their deletion
+          continue;
+        }
+
+        // ── File absent (original path in a rename/rename conflict) ─────────
+        // Both new paths appear separately as AA entries in status.conflicted
+        // and will be handled in their own loop iterations.  Remove the stale
+        // index entry for the original path and move on.
+        if (!fs.existsSync(fp)) {
+          await git.rm([relPath]).catch(() => {});
+          continue;
+        }
+
+        // ── UU / AA / AU / UA — check for inline conflict markers ───────────
+        const raw        = fs.readFileSync(fp, 'utf-8');
+        const hasMarkers = /^<{7}/m.test(raw);
+
+        if (!hasMarkers) {
+          // No markers: rename/rename scenario where git already placed both
+          // copies on disk, or both sides added identical content.
+          // Stage as-is — both files are preserved, nothing is lost.
+          await git.add(relPath);
+          continue;
+        }
+
+        const oursContent   = extractConflictSide(raw, 'ours');
+        const theirsContent = extractConflictSide(raw, 'theirs');
+
+        // Accept their version on the original path
+        pendingIgnore.add(relPath);
+        fs.writeFileSync(fp, theirsContent, 'utf-8');
+        await git.add(relPath);
+
+        // Backup our edits only when they are non-empty and genuinely differ
+        if (oursContent.trim() && oursContent !== theirsContent) {
+          const backupRel = nextBackupPath(relPath);
+          pendingIgnore.add(backupRel);
+          fs.writeFileSync(path.join(WORKSPACE, backupRel), oursContent, 'utf-8');
+          await git.add(backupRel);
+          backups.push({ original: relPath, backup: backupRel });
+        }
+
+      } catch (e) {
+        console.error(`autoResolveConflicts: skipping ${relPath}:`, e.message);
+      }
     }
 
     const names = backups.map(b => `"${b.backup}"`).join(', ');
-    await git.commit(`Merge: accepted shared version, local edits preserved as ${names}`);
+    await git.commit(
+      backups.length
+        ? `Merge: accepted shared version, local edits preserved as ${names}`
+        : 'Merge: resolved conflicts'
+    );
     return backups;
   }
 
