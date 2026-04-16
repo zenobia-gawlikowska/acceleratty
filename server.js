@@ -86,11 +86,11 @@ const git = simpleGit(WORKSPACE);
     const isRepo = await git.checkIsRepo().catch(() => false);
     if (!isRepo) {
       await git.init();
-      await git.addConfig('user.name', 'Acceleratty User');
+      await git.addConfig('user.name', 'AcceleraTTy User');
       await git.addConfig('user.email', 'user@acceleratty.local');
       const welcomePath = path.join(WORKSPACE, 'Welcome.md');
       fs.writeFileSync(welcomePath,
-        '# Welcome to Acceleratty\n\n' +
+        '# Welcome to AcceleraTTy\n\n' +
         'Start creating your documents here.\n\n' +
         '## Getting Started\n\n' +
         '1. Click **+ File** in the sidebar to create a new document\n' +
@@ -832,7 +832,7 @@ app.post('/api/git/test-connection', async (req, res) => {
 
 // H1 — bind to loopback only; no LAN exposure
 app.listen(PORT, '127.0.0.1', () => {
-  console.log(`\n🚀 Acceleratty is running!`);
+  console.log(`\n🚀 AcceleraTTy is running!`);
   console.log(`   Open: http://localhost:${PORT}`);
   console.log(`   Workspace: ${WORKSPACE}\n`);
 });
