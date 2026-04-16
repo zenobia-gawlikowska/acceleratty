@@ -122,6 +122,12 @@ async function api(method, path, body) {
     opts.body = JSON.stringify(body);
   }
   const res = await fetch(path, opts);
+  // Guard against non-JSON responses (e.g. 404 HTML) which would otherwise
+  // silently reject the promise and leave the UI in a stale state.
+  const ct = res.headers.get('content-type') || '';
+  if (!ct.includes('application/json')) {
+    return { success: false, error: `Server error ${res.status}` };
+  }
   return res.json();
 }
 const GET  = path        => api('GET',    path);
