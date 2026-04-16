@@ -78,13 +78,22 @@ if (!fs.existsSync(WORKSPACE)) {
 // Prevent git from hanging waiting for interactive credential input
 process.env.GIT_TERMINAL_PROMPT = '0';
 
+// Belt-and-suspenders: tell git it must NOT walk above the parent of WORKSPACE
+// when searching for a .git directory. This prevents simpleGit(WORKSPACE) from
+// accidentally using the app's own .git when content/ has no .git of its own.
+process.env.GIT_CEILING_DIRECTORIES = path.dirname(WORKSPACE);
+
 const git = simpleGit(WORKSPACE);
 
 // Initialize git repo if needed
 (async () => {
   try {
-    const isRepo = await git.checkIsRepo().catch(() => false);
-    if (!isRepo) {
+    // Check for a .git directory directly inside WORKSPACE rather than using
+    // checkIsRepo(), which returns true if any *parent* directory is a git repo.
+    // Without this, if content/ has no .git of its own, git silently walks up
+    // and uses the app's .git — causing timeline and commits to hit the wrong repo.
+    const hasOwnGit = fs.existsSync(path.join(WORKSPACE, '.git'));
+    if (!hasOwnGit) {
       await git.init();
       await git.addConfig('user.name', 'AcceleraTTy User');
       await git.addConfig('user.email', 'user@acceleratty.local');
