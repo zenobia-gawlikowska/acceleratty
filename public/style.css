@@ -902,6 +902,7 @@ textarea:focus-visible {
 .move-file-modal { max-width: 380px; width: 100%; }
 .modal-body { padding: 20px 24px; }
 .move-file-name  { font-weight: 600; margin-bottom: 16px; }
+.move-file-modal .settings-select { padding: 12px 14px; }
 
 /* ── New file type picker modal ──────────────────────────────────────────────── */
 .new-file-modal {
