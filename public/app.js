@@ -631,7 +631,7 @@ async function confirmCreateFolder() {
 /* ── Open / save file ────────────────────────────────────────────────────────── */
 async function openFile(filePath) {
   if (isImageFile(filePath)) { openImageFile(filePath); return; }
-  if (state.currentFile && state.originalContent !== dom.editor.value) {
+  if (state.currentFile && state.currentFileType !== 'image' && state.originalContent !== dom.editor.value) {
     const ok = confirm('You have unsaved changes. Discard them and open another file?');
     if (!ok) return;
   }
