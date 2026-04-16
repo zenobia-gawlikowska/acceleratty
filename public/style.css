@@ -221,6 +221,16 @@ textarea:focus-visible {
 .file-tree::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 4px; }
 .tree-loading { color: var(--sidebar-muted); padding: 16px 14px; font-size: 13px; }
 .tree-empty { color: var(--sidebar-muted); padding: 16px 14px; font-size: 13px; }
+.tree-section-label {
+  color: var(--sidebar-muted);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  padding: 10px 14px 4px;
+  border-top: 1px solid rgba(255,255,255,.06);
+  margin-top: 4px;
+}
 
 .tree-item {
   display: flex;

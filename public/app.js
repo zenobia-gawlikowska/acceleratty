@@ -215,7 +215,12 @@ function renderTree(items, container, parentPath) {
     }
     return;
   }
-  items.forEach(item => {
+
+  // Split into docs/folders and images so screenshots appear in their own section
+  const nonImages = items.filter(i => i.type !== 'image');
+  const images    = items.filter(i => i.type === 'image');
+
+  function appendItem(item) {
     if (item.type === 'dir') {
       const wrapper = document.createElement('div');
       const row = document.createElement('div');
@@ -308,7 +313,17 @@ function renderTree(items, container, parentPath) {
       }
       container.appendChild(row);
     }
-  });
+  } // end appendItem
+
+  nonImages.forEach(appendItem);
+
+  if (images.length) {
+    const label = document.createElement('div');
+    label.className = 'tree-section-label';
+    label.textContent = 'Screenshots';
+    container.appendChild(label);
+    images.forEach(appendItem);
+  }
 }
 
 async function renameItem(oldPath, oldName, type) {
