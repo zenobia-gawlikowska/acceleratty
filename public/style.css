@@ -8,11 +8,11 @@
   --sidebar-hover: #2a2f45;
   --sidebar-active: #3b4263;
   --sidebar-text: #c9cdd8;
-  --sidebar-muted: #7a7f96;
-  --accent: #4f7ef8;
+  --sidebar-muted: #868ba4;  /* was #7a7f96 — lifted to 4.75:1 on sidebar bg (WCAG AA) */
+  --accent: #436bd3;         /* was #4f7ef8 — darkened to 4.90:1 on white (WCAG AA) */
   --accent-hover: #3a68e0;
   --accent-text: #ffffff;
-  --danger: #e05252;
+  --danger: #c94949;         /* was #e05252 — darkened to 4.63:1 on white (WCAG AA) */
   --danger-hover: #c73e3e;
   --success: #34c38f;
   --warning: #f7a740;

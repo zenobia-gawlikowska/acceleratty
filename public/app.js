@@ -987,6 +987,11 @@ function renderPreview() {
   // H3 — sanitise rendered HTML before injecting into the DOM
   const safe = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(raw) : raw;
   dom.previewContent.innerHTML = safe;
+  // GFM task-list checkboxes have no label; hide them from the accessibility
+  // tree so screen readers read only the adjacent text (WCAG 4.1.2)
+  dom.previewContent.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    cb.setAttribute('aria-hidden', 'true');
+  });
   // Wrap tables in a scrollable div so they don't overflow on narrow screens
   dom.previewContent.querySelectorAll('table').forEach(table => {
     if (!table.parentElement.classList.contains('table-wrap')) {
