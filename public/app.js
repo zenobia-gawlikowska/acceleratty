@@ -102,10 +102,12 @@ const dom = {
 function openSidebar() {
   dom.sidebar.classList.add('open');
   dom.sidebarBackdrop.classList.remove('hidden');
+  dom.btnSidebarToggle.setAttribute('aria-expanded', 'true');
 }
 function closeSidebar() {
   dom.sidebar.classList.remove('open');
   dom.sidebarBackdrop.classList.add('hidden');
+  dom.btnSidebarToggle.setAttribute('aria-expanded', 'false');
 }
 function isMobile() { return window.innerWidth <= 640; }
 

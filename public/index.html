@@ -11,10 +11,10 @@
   <div id="app">
 
     <!-- Header -->
-    <header class="header">
+    <header class="header" aria-label="Application header">
       <div class="header-left">
-        <button id="btn-sidebar-toggle" class="btn btn-icon sidebar-toggle-btn" title="Toggle sidebar">☰</button>
-        <span class="logo">⚡ AcceleraTTy</span>
+        <button id="btn-sidebar-toggle" class="btn btn-icon sidebar-toggle-btn" title="Toggle sidebar" aria-expanded="true" aria-controls="sidebar">☰</button>
+        <span class="logo" aria-hidden="true">⚡ AcceleraTTy</span>
       </div>
       <div class="header-center">
         <span id="current-file-label" class="current-file-label"></span>
@@ -33,9 +33,9 @@
     </header>
 
     <!-- Notifications panel (dropdown) -->
-    <div id="notif-panel" class="notif-panel hidden">
+    <div id="notif-panel" class="notif-panel hidden" role="region" aria-label="Notifications" aria-live="polite">
       <div class="notif-panel-header">
-        <strong>Notifications</strong>
+        <strong id="notif-panel-heading">Notifications</strong>
         <button id="btn-clear-notifs" class="btn-link">Clear all</button>
       </div>
       <div id="notif-list" class="notif-list">
@@ -50,9 +50,9 @@
       <div id="sidebar-backdrop" class="sidebar-backdrop hidden"></div>
 
       <!-- Sidebar -->
-      <aside class="sidebar" id="sidebar">
+      <aside class="sidebar" id="sidebar" aria-label="File browser">
         <div class="sidebar-top">
-          <span class="sidebar-title">Files</span>
+          <h2 class="sidebar-title">Files</h2>
           <div class="sidebar-btns">
             <button id="btn-new-file" class="btn btn-sm" title="New file">+ File</button>
             <button id="btn-new-folder" class="btn btn-sm" title="New folder">+ Folder</button>
@@ -61,6 +61,7 @@
 
         <!-- Inline folder create form (folders don't need a type) -->
         <div id="create-folder-form" class="create-form hidden">
+          <label for="create-folder-input" class="sr-only">Folder name</label>
           <input type="text" id="create-folder-input" class="create-input" placeholder="Folder name…" autocomplete="off" />
           <div class="create-form-btns">
             <button id="btn-create-folder-confirm" class="btn btn-primary btn-sm">Create</button>
@@ -78,7 +79,7 @@
       </aside>
 
       <!-- Editor area -->
-      <div class="editor-area">
+      <main class="editor-area" aria-label="Document editor">
         <div class="editor-toolbar">
           <div class="toolbar-tabs hidden" id="toolbar-tabs">
             <button id="tab-edit" class="tab active">Edit</button>
@@ -146,23 +147,24 @@
             <div id="preview-content" class="preview-content markdown-body"></div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
 
     <!-- Sync bar (bottom) -->
-    <div class="sync-bar">
+    <footer class="sync-bar" aria-label="Sync controls">
       <div class="sync-left">
         <span id="sync-dot" class="sync-dot ok"></span>
         <span id="sync-text" class="sync-text">No changes</span>
       </div>
       <div class="sync-center">
+        <label for="commit-msg" class="sr-only">Describe what changed</label>
         <input type="text" id="commit-msg" class="commit-input" placeholder="Describe what changed (optional)…" />
       </div>
       <div class="sync-right">
         <button id="btn-pull" class="btn btn-sync">⬇ Get Updates</button>
         <button id="btn-commit" class="btn btn-sync btn-primary">📸 Save &amp; Share</button>
       </div>
-    </div>
+    </footer>
 
     <!-- New file type picker modal -->
     <div id="new-file-overlay" class="modal-overlay hidden">
