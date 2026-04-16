@@ -1,4 +1,4 @@
-# ⚡ Acceleratty
+# ⚡ AcceleraTTy
 
 A simple, local content management tool for non-technical users. Write documents in your browser, organise them in folders, and sync everything to a shared GitHub repository — no command line required.
 
@@ -6,11 +6,11 @@ A simple, local content management tool for non-technical users. Write documents
 
 ## How it works (two repositories)
 
-Acceleratty uses **two separate git repositories**:
+AcceleraTTy uses **two separate git repositories**:
 
 ```
 ┌─────────────────────────────────────┐     ┌────────────────────────────────────┐
-│        Acceleratty App Repo         │     │       Your Content Repo            │
+│        AcceleraTTy App Repo         │     │       Your Content Repo            │
 │  github.com/…/acceleratty           │     │  github.com/your-org/your-docs     │
 │                                     │     │                                    │
 │  The tool itself — server, UI,      │     │  Your documents — PRDs, test       │
@@ -21,12 +21,12 @@ Acceleratty uses **two separate git repositories**:
 └─────────────────────────────────────┘     └────────────────────────────────────┘
 ```
 
-- **App repo** — this repository. Contains the server and browser app. Download it to install Acceleratty. You never commit your documents here.
+- **App repo** — this repository. Contains the server and browser app. Download it to install AcceleraTTy. You never commit your documents here.
 - **Content repo** — a separate GitHub repository that you create (or already have). This is where all your documents live. You connect it via the ⚙️ Settings page after installation.
 
 ---
 
-## What Acceleratty does
+## What AcceleraTTy does
 
 | Feature | Description |
 |---|---|
@@ -56,7 +56,7 @@ Acceleratty uses **two separate git repositories**:
 
 ## Installation
 
-### Step 1 — Download Acceleratty
+### Step 1 — Download AcceleraTTy
 
 Click the green **Code** button on this page, then **Download ZIP**. Unzip the folder somewhere permanent (not the Downloads folder — e.g. your Documents or Desktop).
 
@@ -91,7 +91,7 @@ npm start
 
 You should see:
 ```
-🚀 Acceleratty is running!
+🚀 AcceleraTTy is running!
    Open: http://localhost:3000
 ```
 
@@ -103,21 +103,21 @@ Open your browser and go to **[http://localhost:3000](http://localhost:3000)**.
 
 ## First-time setup — connect your content repository
 
-The first time you open Acceleratty, it will prompt you to connect a GitHub repository for your documents. This is separate from the Acceleratty app itself.
+The first time you open AcceleraTTy, it will prompt you to connect a GitHub repository for your documents. This is separate from the AcceleraTTy app itself.
 
 **If you don't have a content repository yet:**
 1. Go to [github.com/new](https://github.com/new) and create a new repository (e.g. `my-team-docs`)
 2. Copy the repository URL (e.g. `https://github.com/your-org/my-team-docs`)
 
-**Then in Acceleratty:**
+**Then in AcceleraTTy:**
 1. Click **⚙️ Connect Your Repository** on the welcome screen (or the ⚙️ icon in the header)
 2. Fill in your **Display Name** and **Email** — these appear in the change history
 3. Paste your **Repository URL**
 4. Enter your **GitHub Username**
 5. Create a **Personal Access Token**:
-   - Go to [github.com/settings/tokens](https://github.com/settings/tokens/new?scopes=repo&description=Acceleratty)
-   - Give it a name (e.g. "Acceleratty"), tick **repo**, click **Generate token**
-   - Copy the token and paste it into Acceleratty
+   - Go to [github.com/settings/tokens](https://github.com/settings/tokens/new?scopes=repo&description=AcceleraTTy)
+   - Give it a name (e.g. "AcceleraTTy"), tick **repo**, click **Generate token**
+   - Copy the token and paste it into AcceleraTTy
 6. Click **Test Connection** to confirm it works, then **Save Settings**
 
 Once connected, the sync buttons at the bottom become active:
@@ -161,33 +161,43 @@ The `content/` folder is excluded from the app repository via `.gitignore`. It m
 
 ---
 
-## Updating Acceleratty
+## Updating AcceleraTTy
 
 When a new version is released, follow the steps below. Your documents are stored in the `content/` folder which is **never touched by an update** — they are completely safe.
 
 ### If you installed using git (recommended)
 
 1. Stop the app — press **Ctrl + C** in the terminal
-2. Download the latest changes:
+2. Delete the lock file to avoid merge conflicts (safe to do — it is always regenerated):
+   ```bash
+   del package-lock.json
+   ```
+   On Mac/Linux:
+   ```bash
+   rm package-lock.json
+   ```
+3. Download the latest changes:
    ```bash
    git pull origin main
    ```
-3. Install any new dependencies:
+4. Install any new or updated dependencies:
    ```bash
    npm install
    ```
-4. Start the app again:
+5. Start the app again:
    ```bash
    npm start
    ```
 
 That's it. Your settings and documents are untouched.
 
+> **Why delete `package-lock.json` first?** This file records the exact versions of every library installed on your machine. If you installed dependencies on a different version of Node.js than the one used to generate the latest update, git will refuse to pull because the file has conflicting local changes. Deleting it before pulling is always safe — `npm install` recreates it automatically.
+
 ### If you installed by downloading a ZIP
 
 1. Stop the app — press **Ctrl + C** in the terminal
 2. **Before anything else** — note where your `content/` folder is (it's inside the `acceleratty` folder). Your documents are in there
-3. Download the new ZIP from the [Acceleratty releases page](https://github.com/zenobia-gawlikowska/acceleratty/releases) and unzip it
+3. Download the new ZIP from the [AcceleraTTy releases page](https://github.com/zenobia-gawlikowska/acceleratty/releases) and unzip it
 4. Copy your existing `content/` folder into the new unzipped folder, replacing the empty one
 5. Open a terminal in the new folder and run:
    ```bash
@@ -205,6 +215,16 @@ The current version is shown in `package.json` at the top of the project folder.
 
 ## Troubleshooting
 
+**"Your local changes to package-lock.json would be overwritten by merge"**
+Your locally-generated `package-lock.json` conflicts with the one in the update. Delete it and pull again:
+```bash
+del package-lock.json   ← Windows
+rm package-lock.json    ← Mac / Linux
+git pull origin main
+npm install
+npm start
+```
+
 **"Port 3000 is already in use"**
 ```bash
 PORT=3001 npm start
@@ -215,7 +235,7 @@ Then open [http://localhost:3001](http://localhost:3001).
 Node.js isn't installed. Download from [nodejs.org](https://nodejs.org).
 
 **Push/pull fails with "Authentication failed"**
-Your token may have expired or lacks the `repo` scope. Generate a new one at [github.com/settings/tokens](https://github.com/settings/tokens/new?scopes=repo&description=Acceleratty) and update it in ⚙️ Settings.
+Your token may have expired or lacks the `repo` scope. Generate a new one at [github.com/settings/tokens](https://github.com/settings/tokens/new?scopes=repo&description=AcceleraTTy) and update it in ⚙️ Settings.
 
 **Changes not showing after a pull**
 Click **↻ Refresh** at the bottom of the file tree sidebar.
