@@ -1029,11 +1029,7 @@ dom.btnPull.addEventListener('click', async () => {
   setBusy('Checking for updates…');
   const res = await POST('/api/git/pull', {});
   clearBusy();
-  if (res.hasConflicts) {
-    toast('Conflicts found — please resolve them', 'warning', 0);
-    addNotification('⚠️', 'Merge conflict', `${res.conflicts.length} file(s) need resolution`);
-    showConflictModal(res.conflicts);
-  } else if (res.success) {
+  if (res.success) {
     // Use result.files (array of changed paths) as source of truth —
     // summary.changes can be undefined/zero after merge commits
     const files   = res.result?.files   || [];
@@ -1043,8 +1039,7 @@ dom.btnPull.addEventListener('click', async () => {
 
     toast(msg, 'success');
 
-    // Always refresh the file tree after a successful pull so new files
-    // pulled from the remote always appear, regardless of summary parsing
+    // Always refresh the file tree after a successful pull
     await loadFiles();
 
     if (count > 0) {
@@ -1054,7 +1049,7 @@ dom.btnPull.addEventListener('click', async () => {
         const wasChanged = files.some(f =>
           (typeof f === 'string' ? f : f.file || '').replace(/\\/g, '/') === state.currentFile
         );
-        if (wasChanged || count > 0) {
+        if (wasChanged) {
           const fresh = await GET(`/api/file?path=${encodeURIComponent(state.currentFile)}`).catch(() => null);
           if (fresh?.content != null && fresh.content !== dom.editor.value) {
             state.originalContent = fresh.content;
@@ -1066,6 +1061,18 @@ dom.btnPull.addEventListener('click', async () => {
           }
         }
       }
+    }
+
+    // Notify about auto-resolved conflicts and the backup files created
+    if (res.backups && res.backups.length > 0) {
+      res.backups.forEach(b => {
+        const origName   = b.original.split('/').pop();
+        const backupName = b.backup.split('/').pop();
+        // Persistent toast (duration 0) so the user notices the backup file name
+        toast(`Your edits to "${origName}" were saved as "${backupName}"`, 'info', 0);
+        addNotification('📋', 'Local edits preserved',
+          `The shared version of "${origName}" was applied. Your local edits were saved as "${backupName}".`);
+      });
     }
   } else {
     toast(res.error || 'Update failed', 'error', 0);

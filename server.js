@@ -396,6 +396,37 @@ app.post('/api/git/commit', async (req, res) => {
   }
 });
 
+// ── Conflict resolution helpers ───────────────────────────────────────────────
+
+// Extract one side from a file that contains git conflict markers.
+//   side = 'ours'   → lines between <<<<<<< and =======
+//   side = 'theirs' → lines between ======= and >>>>>>>
+// Lines outside any conflict block are included for both sides.
+function extractConflictSide(content, side) {
+  const lines = content.split('\n');
+  const out   = [];
+  let zone = 'normal'; // 'normal' | 'ours' | 'theirs'
+  for (const line of lines) {
+    if (/^<{7}/.test(line))              { zone = 'ours';   continue; }
+    if (/^={7}$/.test(line) && zone !== 'normal') { zone = 'theirs'; continue; }
+    if (/^>{7}/.test(line))              { zone = 'normal'; continue; }
+    if (zone === 'normal' || zone === side) out.push(line);
+  }
+  return out.join('\n');
+}
+
+// Return the first unused numbered backup path for a conflicted file.
+// e.g. 'notes/plan.md' → 'notes/plan-1.md' (or -2, -3 … if earlier ones exist).
+function nextBackupPath(relPath) {
+  const ext  = path.extname(relPath);
+  const base = relPath.slice(0, relPath.length - ext.length);
+  for (let n = 1; n <= 999; n++) {
+    const candidate = `${base}-${n}${ext}`;
+    if (!fs.existsSync(path.join(WORKSPACE, candidate))) return candidate;
+  }
+  return `${base}-${Date.now()}${ext}`;
+}
+
 // Detect which branch to use for push/pull:
 // 1. Use the current local branch if it already tracks a remote branch.
 // 2. Otherwise ask the remote what its HEAD is (works for GitHub repos).
@@ -444,20 +475,42 @@ app.post('/api/git/push', async (req, res) => {
 });
 
 app.post('/api/git/pull', async (req, res) => {
-  async function checkConflicts() {
+  // Auto-resolve any merge conflicts without user intervention:
+  //   • Accept "theirs" (the shared/remote version) on the original file.
+  //   • Save "ours" (the local edits) as a numbered backup — e.g. report-1.md.
+  //   • Commit both so nothing is ever lost.
+  // Returns an array of { original, backup } objects, or null if no conflicts.
+  async function autoResolveConflicts() {
     const status = await git.status();
-    if (status.conflicted.length > 0) {
-      const conflicts = [];
-      for (const file of status.conflicted) {
-        try {
-          const content = fs.readFileSync(path.join(WORKSPACE, file), 'utf-8');
-          conflicts.push({ file, content });
-        } catch (_) {}
-      }
-      broadcast('git_conflicts', { count: conflicts.length });
-      return conflicts;
+    if (status.conflicted.length === 0) return null;
+
+    const backups = [];
+    for (const file of status.conflicted) {
+      const fp = path.join(WORKSPACE, file);
+      let raw;
+      try { raw = fs.readFileSync(fp, 'utf-8'); } catch { continue; }
+
+      const oursContent   = extractConflictSide(raw, 'ours');
+      const theirsContent = extractConflictSide(raw, 'theirs');
+      const backupRel     = nextBackupPath(file);
+      const backupFp      = path.join(WORKSPACE, backupRel);
+
+      // Accept theirs on the original path
+      pendingIgnore.add(file);
+      fs.writeFileSync(fp, theirsContent, 'utf-8');
+      await git.add(file);
+
+      // Preserve ours as a numbered backup
+      pendingIgnore.add(backupRel);
+      fs.writeFileSync(backupFp, oursContent, 'utf-8');
+      await git.add(backupRel);
+
+      backups.push({ original: file, backup: backupRel });
     }
-    return null;
+
+    const names = backups.map(b => `"${b.backup}"`).join(', ');
+    await git.commit(`Merge: accepted shared version, local edits preserved as ${names}`);
+    return backups;
   }
 
   try {
@@ -485,8 +538,9 @@ app.post('/api/git/pull', async (req, res) => {
         throw pullErr;
       }
     }
-    const conflicts = await checkConflicts();
-    if (conflicts) return res.json({ success: false, hasConflicts: true, conflicts });
+
+    // Auto-resolve any conflicts that arose from the merge
+    const backups = await autoResolveConflicts();
 
     // Normalise files to a consistent array of path strings
     let pulledFiles = (result.files || []).map(f =>
@@ -500,12 +554,9 @@ app.post('/api/git/pull', async (req, res) => {
         const headAfter = await git.raw(['rev-parse', 'HEAD']).then(s => s.trim()).catch(() => null);
         if (headAfter) {
           if (headBefore && headAfter !== headBefore) {
-            // Normal case: HEAD moved — diff what changed
             const diffOut = await git.raw(['diff', '--name-only', headBefore, headAfter]);
             pulledFiles = diffOut.split('\n').map(s => s.trim()).filter(Boolean);
           } else if (!headBefore) {
-            // Edge case: local had no commits before pull (empty repo first pull)
-            // List everything that landed in the new HEAD commit
             const diffOut = await git.raw(['diff-tree', '--no-commit-id', '-r', '--name-only', headAfter]);
             pulledFiles = diffOut.split('\n').map(s => s.trim()).filter(Boolean);
           }
@@ -513,12 +564,24 @@ app.post('/api/git/pull', async (req, res) => {
       } catch (_) {}
     }
 
+    // Include the backup files so the tree refresh shows them immediately
+    if (backups) {
+      for (const b of backups) {
+        if (!pulledFiles.includes(b.backup)) pulledFiles.push(b.backup);
+      }
+    }
+
     broadcast('git_pulled', { files: pulledFiles, summary: result.summary });
-    res.json({ success: true, result: { ...result, files: pulledFiles } });
+    res.json({ success: true, result: { ...result, files: pulledFiles }, backups: backups || [] });
   } catch (e) {
+    // If pull threw due to conflicts, auto-resolve before giving up
     try {
-      const conflicts = await checkConflicts();
-      if (conflicts) return res.json({ success: false, hasConflicts: true, conflicts });
+      const backups = await autoResolveConflicts();
+      if (backups) {
+        const files = backups.flatMap(b => [b.original, b.backup]);
+        broadcast('git_pulled', { files });
+        return res.json({ success: true, result: { files }, backups });
+      }
     } catch (_) {}
     res.status(500).json({ error: friendlyGitError(e) });
   }
