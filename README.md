@@ -35,7 +35,7 @@ AcceleraTTy uses **two separate git repositories**:
 | 📁 **Folder structure** | Organise documents into folders |
 | 💾 **Save & version history** | Save snapshots with a description — every save is tracked so nothing is ever lost |
 | 🔄 **Team sync** | Download your teammates' latest changes, upload your own |
-| ⚠️ **Conflict resolution** | When two people edit the same file, a side-by-side view lets you pick which version to keep |
+| ⚠️ **Conflict resolution** | When two people edit the same file, the incoming version is accepted automatically and your local edits are saved as a numbered backup (e.g. `report-1.md`) so nothing is lost |
 | 📋 **Copy buttons** | One-click copy on every code block, heading section, or the whole document |
 | 🔔 **Live notifications** | Get alerted when files are added or changed externally |
 | 📅 **Timeline** | Browse the full history of changes and see which files changed in each snapshot |
