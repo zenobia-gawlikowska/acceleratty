@@ -15,6 +15,16 @@ const state = {
 const IMAGE_EXTS_CLIENT = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp']);
 function isImageFile(p) { return IMAGE_EXTS_CLIENT.has(p.slice(p.lastIndexOf('.')).toLowerCase()); }
 
+// Count visible files inside a tree node (recursively), excluding .gitkeep
+function countTreeFiles(children = []) {
+  let n = 0;
+  for (const c of children) {
+    if (c.type === 'dir') n += countTreeFiles(c.children);
+    else if (c.name !== '.gitkeep') n++;
+  }
+  return n;
+}
+
 /* ── DOM refs ────────────────────────────────────────────────────────────────── */
 const $ = id => document.getElementById(id);
 const dom = {
@@ -236,6 +246,7 @@ function renderTree(items, container, parentPath) {
         <span class="item-actions">
           <button class="item-action-btn" data-action="new-file-in" data-path="${item.path}" title="New file here">+📄</button>
           <button class="item-action-btn" data-action="rename-dir" data-path="${item.path}" data-name="${item.name}" title="Rename">✏️</button>
+          <button class="item-action-btn item-action-btn--danger" data-action="delete-dir" data-path="${item.path}" data-name="${item.name}" title="Delete folder">🗑️</button>
         </span>
       `;
       const children = document.createElement('div');
@@ -256,6 +267,31 @@ function renderTree(items, container, parentPath) {
       row.querySelector('[data-action="rename-dir"]')?.addEventListener('click', e => {
         e.stopPropagation();
         renameItem(item.path, item.name, 'folder');
+      });
+      row.querySelector('[data-action="delete-dir"]')?.addEventListener('click', e => {
+        e.stopPropagation();
+        const fileCount = countTreeFiles(item.children);
+        const msg = fileCount > 0
+          ? `Delete "${item.name}" and all ${fileCount} file${fileCount === 1 ? '' : 's'} inside? This cannot be undone.`
+          : `Delete folder "${item.name}"?`;
+        if (!confirm(msg)) return;
+        DEL(`/api/folder?path=${encodeURIComponent(item.path)}`).then(r => {
+          if (r.success) {
+            // If the open file was inside this folder, close the editor
+            if (state.currentFile && state.currentFile.startsWith(item.path + '/')) {
+              state.currentFile = null;
+              state.currentFileType = null;
+              setEditorVisible(false);
+              dom.currentFileLabel.textContent = '';
+              document.title = 'AcceleraTTy';
+              setUnsaved(false);
+            }
+            loadFiles();
+            toast(`Deleted "${item.name}"`, 'info');
+          } else {
+            toast(r.error || 'Delete failed', 'error');
+          }
+        });
       });
 
       wrapper.appendChild(row);

@@ -269,6 +269,7 @@ textarea:focus-visible {
   line-height: 1;
 }
 .tree-item .item-action-btn:hover { background: rgba(255,255,255,.1); color: var(--sidebar-text); }
+.tree-item .item-action-btn--danger:hover { background: rgba(201,73,73,.25); color: #f08080; }
 
 .tree-folder { }
 .tree-folder-children { padding-left: 12px; }

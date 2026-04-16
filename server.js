@@ -312,6 +312,16 @@ app.delete('/api/file', (req, res) => {
   }
 });
 
+app.delete('/api/folder', (req, res) => {
+  try {
+    const fp = safePath(req.query.path);
+    fs.rmSync(fp, { recursive: true, force: true });
+    res.json({ success: true });
+  } catch (e) {
+    res.status(e.message.includes('Access denied') ? 403 : 500).json({ error: e.message });
+  }
+});
+
 app.post('/api/mkdir', (req, res) => {
   try {
     const fp = safePath(req.body.folderPath);
