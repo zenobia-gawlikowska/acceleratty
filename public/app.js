@@ -1148,6 +1148,12 @@ function clearBusy() {
 dom.btnCommit.addEventListener('click', async () => {
   const message = dom.commitMsg.value.trim() || 'Update content';
 
+  // Step 0: flush any unsaved editor content to disk before committing
+  if (state.currentFile && state.currentFileType !== 'image' &&
+      state.originalContent !== dom.editor.value) {
+    await saveFile();
+  }
+
   // Step 1: commit
   setBusy('Saving snapshot…');
   const commitRes = await POST('/api/git/commit', { message });
