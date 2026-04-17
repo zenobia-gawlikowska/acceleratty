@@ -1144,11 +1144,59 @@ const FORMATS = {
 
 document.querySelectorAll('.fmt-btn[data-fmt]').forEach(btn => {
   btn.addEventListener('click', () => {
+    if (btn.dataset.fmt === 'bold') { applyBold(); return; }
     const fmt = FORMATS[btn.dataset.fmt];
     if (!fmt) return;
     insertFormat(fmt);
   });
 });
+
+// Cmd+B / Ctrl+B → bold
+dom.editor.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
+    e.preventDefault();
+    applyBold();
+  }
+});
+
+// Bold: wrap selection in ** … **, but never let the markers cross a newline.
+// Leading/trailing whitespace is moved outside the markers so the result
+// always looks like  **word**  rather than ** word **.
+function applyBold() {
+  const ta    = dom.editor;
+  pushUndo(ta.value);
+
+  let start = ta.selectionStart;
+  let end   = ta.selectionEnd;
+  let sel   = ta.value.substring(start, end);
+
+  // Move any leading whitespace (incl. newlines) outside the opening **
+  const leading = sel.match(/^[\s]*/)[0];
+  start += leading.length;
+  sel    = sel.slice(leading.length);
+
+  // Move any trailing whitespace (incl. newlines) outside the closing **
+  const trailing = sel.match(/[\s]*$/)[0];
+  end  -= trailing.length;
+  sel   = sel.slice(0, sel.length - trailing.length);
+
+  // Clip to the first line — ** must not span a newline
+  const nl = sel.indexOf('\n');
+  if (nl !== -1) {
+    sel = sel.slice(0, nl).replace(/\s+$/, ''); // also trim the new trailing edge
+    end = start + sel.length;
+  }
+
+  // Nothing meaningful selected → insert placeholder
+  if (!sel) sel = 'bold text';
+
+  ta.setRangeText(`**${sel}**`, start, end, 'end');
+  // Leave the bold content selected so the user can type over it immediately
+  ta.selectionStart = start + 2;
+  ta.selectionEnd   = start + 2 + sel.length;
+  ta.dispatchEvent(new Event('input'));
+  ta.focus();
+}
 
 function insertAtCursor(text) {
   const ta = dom.editor;
