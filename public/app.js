@@ -142,10 +142,12 @@ const ICONS = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' 
 function toast(msg, type = 'info', duration = 4000) {
   const el = document.createElement('div');
   el.className = `toast ${type}`;
+  // role="alert" interrupts immediately for errors; polite status for everything else
+  el.setAttribute('role', type === 'error' ? 'alert' : 'status');
   el.innerHTML = `
-    <span class="toast-icon">${ICONS[type]}</span>
+    <span class="toast-icon" aria-hidden="true">${ICONS[type]}</span>
     <span class="toast-msg">${msg}</span>
-    <button class="toast-close">✕</button>
+    <button class="toast-close" aria-label="Dismiss notification">✕</button>
   `;
   el.querySelector('.toast-close').addEventListener('click', () => el.remove());
   dom.toasts.prepend(el);
