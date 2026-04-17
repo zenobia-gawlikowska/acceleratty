@@ -373,7 +373,11 @@
     </div>
 
     <!-- Toast container -->
-    <div id="toasts" class="toast-container" role="status" aria-live="polite" aria-atomic="false"></div>
+    <div id="toasts" class="toast-container"></div>
+    <!-- Screen-reader-only live regions. Always present in the DOM so that
+         text-content changes are reliably picked up by all screen readers. -->
+    <div id="sr-polite"   class="sr-only" aria-live="polite"    aria-atomic="true"></div>
+    <div id="sr-assertive" class="sr-only" aria-live="assertive" aria-atomic="true"></div>
 
   </div>
 

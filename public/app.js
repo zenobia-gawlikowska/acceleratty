@@ -139,11 +139,23 @@ const DEL  = path        => api('DELETE', path);
 /* ── Toast notifications ─────────────────────────────────────────────────────── */
 const ICONS = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
 
+// Always-present live-region nodes (must exist in DOM before announcements fire)
+const srPolite    = document.getElementById('sr-polite');
+const srAssertive = document.getElementById('sr-assertive');
+
+function announce(msg, assertive = false) {
+  const node = assertive ? srAssertive : srPolite;
+  // Clear first so identical back-to-back messages still trigger a re-read
+  node.textContent = '';
+  requestAnimationFrame(() => { node.textContent = msg; });
+}
+
 function toast(msg, type = 'info', duration = 4000) {
+  announce(msg, type === 'error');
+
   const el = document.createElement('div');
   el.className = `toast ${type}`;
-  // role="alert" interrupts immediately for errors; polite status for everything else
-  el.setAttribute('role', type === 'error' ? 'alert' : 'status');
+  el.setAttribute('aria-hidden', 'true'); // visual only — announcement handled above
   el.innerHTML = `
     <span class="toast-icon" aria-hidden="true">${ICONS[type]}</span>
     <span class="toast-msg">${msg}</span>
