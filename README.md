@@ -2,6 +2,8 @@
 
 A simple, local content management tool for non-technical users. Write documents in your browser, organise them in folders, and sync everything to a shared GitHub repository — no command line required.
 
+> **Note:** This project can be edited and pushed entirely from the cloud — no local machine required.
+
 ---
 
 ## How it works (two repositories)
